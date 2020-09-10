@@ -1,12 +1,47 @@
-// import React, { useEffect, useRef, useState } from "react";
-// import { select, line, curveCardinal } from "d3";
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
+//import { select, line, curveCardinal } from "d3";
+//import React, { useEffect, useState, useRef } from "react";
+//import * as d3 from "d3";
 import './App.css';
 import Circles from "./Circles";
 
 // at https://wattenberger.com/blog/react-and-d3
 // referencia: https://itnext.io/changing-children-state-from-another-component-with-react-hooks-5c982c042e8
 // PASO 0
+// function App() {
+//   const ref = useRef();
+//   const [datos, setDatos] = useState(generateDataset());
+
+//   useEffect(() => {
+//     const interval = setInterval(() => {
+//       const newDataset = generateDataset();
+//       setDatos(newDataset);
+//       console.log("  ");
+//       console.log("  ");
+//       console.log("  ");
+//       console.log("0_En App-useEffect_newDataset:", newDataset);
+//       console.log("1_En App-useEffect_datos:", datos);
+//     }, 5000);
+//     return () => clearInterval(interval);
+//   }, [datos]);
+  
+//   useEffect(() => {
+//       const svgElement = d3.select(ref.current);
+//       console.log("2_En useEffect_svgElement: ", svgElement);
+//       svgElement.selectAll("circle")
+//         .data(datos)
+//         .join("circle")
+//           .attr("cx", d => d[0])
+//           .attr("cy", d => d[1])
+//           .attr("r", 3)
+//       console.log("3_En useEffect_svgElement: ", svgElement);
+//     }, [datos]
+//   )
+
+//   return (
+//       <svg viewBox="0 0 100 50" ref ={ref}/>
+//   );
+// }
 function App() {
     const ref = useRef(null);
     const [datos, setDatos] = useState(generateDataset())
@@ -19,24 +54,22 @@ function App() {
         const newDataset = generateDataset();
         setDatos(newDataset);
         console.log("  ");
-        console.log("0_En App-useEffect-interval:", newDataset[0][0]);
+        console.log("  ");
+        console.log("  ");
+        console.log("0_En App-useEffect_newDataset:", newDataset);
         actualizaHijo(newDataset);
-                  console.log("1_En App-useEffect:", datos[0][0]);
-      }, 5000);
+                  console.log("1_En App-useEffect_datos:", datos);
+      }, 2000);
       return () => clearInterval(interval);
     }, [datos])
     // useEffect(() => {
     //     const newDataset = generateDataset();
     //     setDatos(newDataset);
     //     actualizaHijo(newDataset);
-    //             console.log("1_En App-useEffect:", datos[0][0]);
+    //             console.log("2_En App-useEffect:", datos[0][0]);
     // }, [datos])
 
-    return (
-      <>
-      <Circles datos = {datos} ref = {ref}></Circles>
-      </>
-    );
+    return (<Circles datos = {datos} ref = {ref}></Circles>);
   }
 //*****************Manera de actualizar el padre desde el hijo */
   // function Parent() {
@@ -60,7 +93,7 @@ function App() {
   // }
   
 const generateDataset = () =>
-Array(10)
+Array(2)
   .fill(0)
   .map(() => [Math.random() * 80 + 10, Math.random() * 35 + 10]);
 
