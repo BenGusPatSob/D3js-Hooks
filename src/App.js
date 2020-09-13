@@ -25,34 +25,28 @@ function App() {
     }
 
     useEffect(() => {
-      // const interval = setInterval(() => {
-      //   const newDataset = generateDataset();
-      //   setValorParaHijo(newDataset);
-      //   actualizaHijo(newDataset);
-      // }, 2000);
-      // return () => clearInterval(interval);
-      const inicia = () => {
-        const newDataset = generateDataset();
-        setValorParaHijo(newDataset);
-        actualizaHijo(newDataset);
-        console.log("Valores D3js iniciados!");
-      }
-      if(valorparahijo.length === 0){
-        inicia();
-      }
-      else{
-        actualizaHijo(valorparahijo);
-      }
-    }, [valorparahijo])
+          const inicia = () => {
+            const newDataset = generateDataset();
+            setValorParaHijo(newDataset);
+            actualizaHijo(newDataset);
+            console.log("Valores D3js iniciados!");
+          }
+          if(valorparahijo.length === 0){
+            inicia();
+          }
+          else{
+            actualizaHijo(valorparahijo);
+          }
+        }, [valorparahijo])
 
     useEffect(() => {
-        console.log("valordesdehijo(en el padre): ", valordesdehijo);
-      }
-    , [valordesdehijo]);
+            console.log("valordesdehijo(en el padre): ", valordesdehijo);
+          }
+        , [valordesdehijo]);
 
     useEffect(() => {
-      console.log("valorDesdeD3js: ", valorDesdeD3js);
-    }, [valorDesdeD3js]); 
+          console.log("valorDesdeD3js: ", valorDesdeD3js);
+        }, [valorDesdeD3js]); 
 
     return (
       <div>

@@ -4,9 +4,6 @@ import * as d3 from "d3";
 
 const Circles = forwardRef((data, referencia) => {
   const {valorparahijo, recogeDatoDesdeD3js} = data.data;
-  // console.log("desestructurando data: ", data);
-  // console.log("desestructurando callback: ", recogeDatoDesdeD3js);
-  // console.log("desestructurando datos: ", valorparahijo);
   const [datos, setDataset] = useState(valorparahijo);
   const refToSvg = useRef();
 
