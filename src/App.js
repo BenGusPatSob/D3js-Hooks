@@ -10,6 +10,7 @@ function App() {
     const ref = useRef(null);
     const [valorparahijo, setValorParaHijo] = useState(generateDataset());
     const [valordesdehijo, setvalordesdehijo] = useState("");
+    const [valorDesdeD3js, setValorDesdeD3js] = useState(null);
     
     const actualizaHijo = (newDatos) =>{
       ref.current.actualizaDatos(newDatos);
@@ -17,27 +18,46 @@ function App() {
 
     const actualizaPadre = (newDato) =>{
       setvalordesdehijo(newDato);
-      console.log("valordesdehijo: ", valordesdehijo);
+    }
+
+    const recogeDatoDesdeD3js = (newDato) => {
+      setValorDesdeD3js(newDato);
     }
 
     useEffect(() => {
-      const interval = setInterval(() => {
+      // const interval = setInterval(() => {
+      //   const newDataset = generateDataset();
+      //   setValorParaHijo(newDataset);
+      //   actualizaHijo(newDataset);
+      // }, 2000);
+      // return () => clearInterval(interval);
+      const inicia = () => {
         const newDataset = generateDataset();
         setValorParaHijo(newDataset);
         actualizaHijo(newDataset);
-      }, 2000);
-      return () => clearInterval(interval);
+        console.log("Valores D3js iniciados!");
+      }
+      if(valorparahijo.length === 0){
+        inicia();
+      }
+      else{
+        actualizaHijo(valorparahijo);
+      }
     }, [valorparahijo])
 
     useEffect(() => {
-        console.log("valordesdehijo: ", valordesdehijo);
+        console.log("valordesdehijo(en el padre): ", valordesdehijo);
       }
     , [valordesdehijo]);
 
+    useEffect(() => {
+      console.log("valorDesdeD3js: ", valorDesdeD3js);
+    }, [valorDesdeD3js]); 
+
     return (
       <div>
-        <Circles data={valorparahijo} ref={ref}></Circles>
-        <InputText valor={valordesdehijo} onChange={actualizaPadre}></InputText>
+        <Circles data={{valorparahijo, recogeDatoDesdeD3js}} ref={ref} ></Circles>
+        <InputText valor={valordesdehijo} onChange={actualizaPadre} ></InputText>
       </div>
     );
   }
