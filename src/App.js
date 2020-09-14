@@ -77,7 +77,7 @@ function App() {
   // }
   
 const generateDataset = () =>
-Array(2)
+Array(200)
   .fill(0)
   .map(() => [Math.random() * 80 + 10, Math.random() * 35 + 10]);
 
