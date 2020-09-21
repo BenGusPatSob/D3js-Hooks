@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import './App.css';
-import Circles from "./Circles";
+import DwgPad from "./DwgPad";
 import InputText from "./InputText";
+
 
 // at https://wattenberger.com/blog/react-and-d3
 // referencia: https://itnext.io/changing-children-state-from-another-component-with-react-hooks-5c982c042e8
@@ -29,7 +30,7 @@ function App() {
             const newDataset = generateDataset();
             setValorParaHijo(newDataset);
             actualizaHijo(newDataset);
-            console.log("Valores D3js iniciados!");
+            //console.log("Valores D3js iniciados!");
           }
           if(valorparahijo.length === 0){
             inicia();
@@ -40,7 +41,7 @@ function App() {
         }, [valorparahijo])
 
     useEffect(() => {
-            console.log("valordesdehijo(en el padre): ", valordesdehijo);
+            //console.log("valordesdehijo(en el padre): ", valordesdehijo);
           }
         , [valordesdehijo]);
 
@@ -50,7 +51,8 @@ function App() {
 
     return (
       <div>
-        <Circles data={{valorparahijo, recogeDatoDesdeD3js}} ref={ref} ></Circles>
+        <h1>EQSApp</h1>
+        <DwgPad data={{valorparahijo, recogeDatoDesdeD3js}} ref={ref} ></DwgPad>
         <InputText valor={valordesdehijo} onChange={actualizaPadre} ></InputText>
       </div>
     );
