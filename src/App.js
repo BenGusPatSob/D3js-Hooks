@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import './App.css';
 import DwgPad from "./DwgPad";
-import InputText from "./InputText";
+//import InputText from "./InputText";
 
 
 // at https://wattenberger.com/blog/react-and-d3
@@ -9,51 +9,63 @@ import InputText from "./InputText";
 
 function App() {
     const ref = useRef(null);
-    const [valorparahijo, setValorParaHijo] = useState(generateDataset());
-    const [valordesdehijo, setvalordesdehijo] = useState("");
-    const [valorDesdeD3js, setValorDesdeD3js] = useState(null);
+    const [width, setWidth] = useState(1000);
+    const [height, setHeight] = useState(800);
+    const [valorparahijo, setValorParaHijo] = useState({
+      width,
+      height,
+      zoomTransform: { k: 1, x: 0, y: 0 },
+      Geom: generateDataset()
+    });
     
     const actualizaHijo = (newDatos) =>{
       ref.current.actualizaDatos(newDatos);
     }
 
     const actualizaPadre = (newDato) =>{
-      setvalordesdehijo(newDato);
+      setValorParaHijo(newDato);
     }
 
-    const recogeDatoDesdeD3js = (newDato) => {
-      setValorDesdeD3js(newDato);
-    }
+    const actualizaWidth = (newWidth) => {
+      setWidth(newWidth);
+    };
+    const actualizaHeigth = (newHeight) => {
+      setHeight(newHeight);
+    };
+
+    useEffect(() => {
+      actualizaHeigth(height);
+    }, [height]);
+
+    useEffect(() => {
+      actualizaWidth(width);
+    }, [width]);
 
     useEffect(() => {
           const inicia = () => {
-            const newDataset = generateDataset();
-            setValorParaHijo(newDataset);
+            const Geom = generateDataset();
+            const newDataset = {
+              width,
+              height,
+              zoomTransform: { k: 1, x: 0, y: 0 },
+              Geom,
+            };
+            actualizaPadre(newDataset);
             actualizaHijo(newDataset);
-            //console.log("Valores D3js iniciados!");
           }
-          if(valorparahijo.length === 0){
-            inicia();
+          if(!valorparahijo){
+            const nuevoValor = inicia();
+            console.log("nuevoValor", nuevoValor);
           }
           else{
             actualizaHijo(valorparahijo);
           }
-        }, [valorparahijo])
-
-    useEffect(() => {
-            //console.log("valordesdehijo(en el padre): ", valordesdehijo);
-          }
-        , [valordesdehijo]);
-
-    useEffect(() => {
-          console.log("valorDesdeD3js: ", valorDesdeD3js);
-        }, [valorDesdeD3js]); 
+        }, [valorparahijo, width, height]);
 
     return (
       <div>
         <h1>EQSApp</h1>
-        <DwgPad data={{valorparahijo, recogeDatoDesdeD3js}} ref={ref} ></DwgPad>
-        <InputText valor={valordesdehijo} onChange={actualizaPadre} ></InputText>
+        <DwgPad data={{valorparahijo, actualizaPadre}} ref={ref} ></DwgPad>
       </div>
     );
   }
