@@ -81,6 +81,6 @@ function App() {
 const generateDataset = () =>
 Array(200)
   .fill(0)
-  .map(() => [Math.random() * 80 + 10, Math.random() * 35 + 10]);
+  .map(() => [Math.random()/2 * 30, Math.random()/10 *30]);
 
 export default App;
