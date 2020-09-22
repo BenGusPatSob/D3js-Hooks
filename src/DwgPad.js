@@ -1,5 +1,5 @@
 import React, {
-  useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useImperativeHandle,
@@ -18,6 +18,7 @@ const DwgPad = forwardRef((data, referencia) => {
   //3. Establecemos los hooks:
   const [Geom, setGeom] = useState(valorparahijo.Geom);
   const [zoomTransform, setZoomTransform] = useState(valorparahijo.zoomTransform)
+  const [geomTransf, setGeomTransf] = useState(() => {return Geom.map(d => [d[0]*zoomTransform.k + zoomTransform.x, d[1]*zoomTransform.k + zoomTransform.y, d[2]])})
   const mouse = useMouse(refToSvg, { enterDelay: 100, leaveDelay: 100, fps: 30 });
   //4. Variables:
   const numDivEjeXInicial = 10;
@@ -25,51 +26,97 @@ const DwgPad = forwardRef((data, referencia) => {
   const [width, setWidth] = useState(valorparahijo.width);
   //5. Actualización del hijo ordenada desde el padre (imperativa)
   useImperativeHandle(referencia, () => {
+    console.log("DwgPad: Mandando actualizar datos (useImperativeHandle)");
     return { actualizaDatos };
   });
   const actualizaDatos = (datosNuevos) => {
+    console.log("DwgPad: datosNuevos_actualizaDatos (inicial): ", datosNuevos);
+    console.log("DwgPad: datosNuevos.Geom_actualizaDatos (inicial): ", ...datosNuevos.Geom);
     actualizaGeom(datosNuevos.Geom);
     actualizaHeight(datosNuevos.height);
     actualizaWidth(datosNuevos.width);
+    console.log("DwgPad: datosNuevos.Geom_actualizaDatos (final): ", ...datosNuevos.Geom);
   };
   const actualizaGeom = (geomNueva) => {
+    console.log("DwgPad: geomNueva_actualizaGeom (inicial):", ...geomNueva);
     setGeom(geomNueva);
+    transformaGeometria();
+    console.log("DwgPad: geomNueva_actualizaGeom (final):", ...Geom);
   };
   const actualizaHeight = (heightNueva) => {
+    //console.log("DwgPad: heightNueva_actualizaHeight (inicial):", heightNueva);
     setHeight(heightNueva);
+    //console.log("DwgPad: heightNueva_actualizaHeight (final):", height);
   };
   const actualizaWidth = (widthNueva) => {
+    //console.log("DwgPad: widthNueva_actualizaWidth (inicial):", widthNueva);
     setWidth(widthNueva);
+    //console.log("DwgPad: widthNueva_actualizaWidth (final):", width);
   };
   //6. Actualizacion del padre ordenada desde el hijo
   const actualizaPadreDesdeHijo = () => {
-    actualizaPadre({
+    let objetoActualizado = {
+      width,
+      height,
+      zoomTransform,
+      Geom,
+    };
+    console.log("DwgPad: Mandando actualizar Padre desde Hijo_actualizaPadreDesdeHijo (via actualizaPadre) con el objeto siguiente:", {
       width,
       height,
       zoomTransform,
       Geom,
     });
+    actualizaPadre(objetoActualizado);
   }
   //7. Gestores de eventos:
   ////7.1 Gestor de los clicks:
   const handleClick = () => {
+    console.log("Click!!!________________________________________________________________________________________________________");
     let datoAUnir = [
       (mouse.x - zoomTransform.x) / zoomTransform.k,
       (mouse.elementHeight - mouse.y - zoomTransform.y) / zoomTransform.k,
-      0,
+      1
     ];
-    actualizaDatos([...Geom, datoAUnir]);
-    // console.log(...Geom);
-    // console.log("datoAUnir", datoAUnir);
-    // console.log(...[...Geom, datoAUnir]);
-    actualizaPadreDesdeHijo();
+    //Se actualiza a si mismo:
+    console.log("DwgPad: Geom previa_handleClick: ", ...Geom);
+    console.log("DwgPad: Dato a unir_handleClick: ", ...datoAUnir);
+    actualizaDatos({width, height, zoomTransform, Geom: [...Geom, datoAUnir]});
+    console.log(
+      "DwgPad: Objeto actualizado enviado_handleClick (via actualizaDatos): ",
+      { width, height, zoomTransform, Geom: [...Geom, datoAUnir] }
+    );
+    //Se actualiza (imperativamente) al padre desde el hijo:
+    console.log("DwgPad: Llamada a actualizaPadreDesdeHijo_handleClick");
+    //actualizaPadreDesdeHijo();
   };
-  ////7.2 Actualiza el zoomTransform:
-  const actualizaZoomTransform = (nuevoZT) => {
-    setZoomTransform(nuevoZT);    
+  ////7.2. Actualizador del zoom transform: movido dentro del useEffect...
+  ////7.3. Genera geometria transformada por zoomTransform:
+  const transformaGeometria = () => { 
+    setGeomTransf( Geom.map(d => [d[0]*zoomTransform.k + zoomTransform.x, d[1]*zoomTransform.k + zoomTransform.y, d[2]]) );
   };
-  //10. El bloque de dibujo (d3js):
-  useEffect(() => {
+
+  //8. El bloque de dibujo (d3js):
+  useLayoutEffect(() => {
+    console.log("DwgPad: Entrando en useEffect.. Objecto a renderizar: ", {
+      width,
+      height,
+      zoomTransform,
+      Geom,
+    });
+
+    console.log("DwgPad: Geometria a renderizar en useEffect.. (transformada): ", {
+      width,
+      height,
+      zoomTransform,
+      geomTransf,
+    });
+
+    ////7.2 Actualiza el zoomTransform:
+    const actualizaZoomTransform = (nuevoZT) => {
+      setZoomTransform(nuevoZT);
+    };
+
     const k = height / width;
     //https://observablehq.com/@d3/zoomable-scatterplot
     const svg = d3.select(refToSvg.current);
@@ -80,114 +127,110 @@ const DwgPad = forwardRef((data, referencia) => {
       .scaleLinear()
       .domain([-numDivEjeXInicial, numDivEjeXInicial])
       .range([0, width]);
-    // let y = d3
-    //   .scaleLinear()
-    //   .domain([-numDivEjeXInicial * k, numDivEjeXInicial * k])
-    //   .range([height, 0]);
-    // let z = d3
-    //   .scaleOrdinal()
-    //   .domain(Geom.map((d) => d[2]))
-    //   .range(d3.schemeCategory10);
-    // const xAxis = (g, x) =>
-    //   g
-    //     .attr("transform", `translate(0,${height})`)
-    //     .call(d3.axisTop(x).ticks(12))
-    //     .call((g) => g.select(".domain").attr("display", "none"));
-    // const yAxis = (g, y) =>
-    //   g
-    //     .call(d3.axisRight(y).ticks(12 * k))
-    //     .call((g) => g.select(".domain").attr("display", "none"));
+    let y = d3
+      .scaleLinear()
+      .domain([-numDivEjeXInicial * k, numDivEjeXInicial * k])
+      .range([height, 0]);
+    let z = d3
+      .scaleOrdinal()
+      .domain(geomTransf.map((d) => d[2]))
+      .range(d3.schemeCategory10);
+    const xAxis = (g, x) =>
+      g
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisTop(x).ticks(12))
+        .call((g) => g.select(".domain").attr("display", "none"));
+    const yAxis = (g, y) =>
+      g
+        .call(d3.axisRight(y).ticks(12 * k))
+        .call((g) => g.select(".domain").attr("display", "none"));
 
-    // const grid = (g, x, y) =>
-    //   g
-    //     .attr("stroke", "currentColor")
-    //     .attr("stroke-opacity", 0.1)
-    //     .call((g) =>
-    //       g
-    //         .selectAll(".x")
-    //         .data(x.ticks(12))
-    //         .join(
-    //           (enter) =>
-    //             enter.append("line").attr("class", "x").attr("y2", height),
-    //           (update) => update,
-    //           (exit) => exit.remove()
-    //         )
-    //         .attr("x1", (d) => 0.5 + x(d))
-    //         .attr("x2", (d) => 0.5 + x(d))
-    //     )
-    //     .call((g) =>
-    //       g
-    //         .selectAll(".y")
-    //         .data(y.ticks(12 * k))
-    //         .join(
-    //           (enter) =>
-    //             enter.append("line").attr("class", "y").attr("x2", width),
-    //           (update) => update,
-    //           (exit) => exit.remove()
-    //         )
-    //         .attr("y1", (d) => 0.5 + y(d))
-    //         .attr("y2", (d) => 0.5 + y(d))
-    //     );
+    const grid = (g, x, y) =>
+      g
+        .attr("stroke", "currentColor")
+        .attr("stroke-opacity", 0.1)
+        .call((g) =>
+          g
+            .selectAll(".x")
+            .data(x.ticks(12))
+            .join(
+              (enter) =>
+                enter.append("line").attr("class", "x").attr("y2", height),
+              (update) => update,
+              (exit) => exit.remove()
+            )
+            .attr("x1", (d) => 0.5 + x(d))
+            .attr("x2", (d) => 0.5 + x(d))
+        )
+        .call((g) =>
+          g
+            .selectAll(".y")
+            .data(y.ticks(12 * k))
+            .join(
+              (enter) =>
+                enter.append("line").attr("class", "y").attr("x2", width),
+              (update) => update,
+              (exit) => exit.remove()
+            )
+            .attr("y1", (d) => 0.5 + y(d))
+            .attr("y2", (d) => 0.5 + y(d))
+        );
 
-    // const zoom = d3.zoom().scaleExtent([0.5, 32]).on("zoom", zoomed);
-    // const gGrid = svg.append("g");
-    // const gDot = svg
-    //   .append("g")
-    //   .attr("fill", "none")
-    //   .attr("stroke-linecap", "round");
-    // gDot
-    //   .selectAll("path")
-    //   .data(Geom)
-    //   .join("path")
-    //   .attr("d", (d) => `M${x(d[0])},${y(d[1])}h0`)
-    //   .attr("stroke", (d) => z(d[2]))
-    //   .attr("stroke-width", 20);
-    // const gx = svg.append("g");
-    // const gy = svg.append("g");
+    const zoom = d3.zoom().scaleExtent([0.1, 50]).on("zoom", zoomed);
+    const gGrid = svg.append("g");
+    const gDot = svg
+      .append("g")
+      .attr("fill", "none")
+      .attr("stroke-linecap", "round");
+    gDot
+      .selectAll("path")
+      .data(geomTransf)
+      .join("path")
+      .attr("d", (d) => `M${x(d[0])},${y(d[1])}h0`)
+      .attr("stroke", (d) => z(d[2]))
+      .attr("stroke-width", 20);
+    const gx = svg.append("g");
+    const gy = svg.append("g");
 
-    // svg.call(zoom).call(zoom.transform, d3.zoomIdentity);
+    svg.call(zoom).call(zoom.transform, d3.zoomIdentity);
 
-    // function zoomed({ transform }) {
-    //   transform.k = zoomTransform.k;
-    //   transform.x = zoomTransform.x;
-    //   transform.y = zoomTransform.y;
-    //   x = d3
-    //     .scaleLinear()
-    //     .domain([
-    //       -numDivEjeXInicial * transform.k + transform.x,
-    //       numDivEjeXInicial * transform.k + transform.x,
-    //     ])
-    //     .range([0, width]);
-    //   y = d3
-    //     .scaleLinear()
-    //     .domain([
-    //       -numDivEjeXInicial * k * transform.k + transform.y,
-    //       numDivEjeXInicial * k * transform.k + transform.y,
-    //     ])
-    //     .range([height, 0]);
-    //   //const zy = transform.rescaleY(y).interpolate(d3.interpolateRound);
-    //   gDot
-    //     .attr(
-    //       "transform",
-    //       `scale(${transform.k}) translate(${transform.x}, ${
-    //         `scale(${transform.k}) translate(${transform.x}, ${transform.y})`.y
-    //       })`
-    //     )
-    //     .attr(
-    //       "stroke-width",
-    //       5 /
-    //         `scale(${transform.k}) translate(${transform.x}, ${transform.y})`.k
-    //     );
-    //   gx.call(xAxis, x);
-    //   gy.call(yAxis, y);
-    //   gGrid.call(grid, x, y);
-    //   actualizaZoomTransform({
-    //     k: transform.k,
-    //     x: transform.x,
-    //     y: transform.y,
-    //   });
-    // }
-  }, [Geom, zoomTransform, height, width]);
+    function zoomed({ transform }) {
+      x = d3
+        .scaleLinear()
+        .domain([
+          -numDivEjeXInicial * transform.k + transform.x,
+          numDivEjeXInicial * transform.k + transform.x,
+        ])
+        .range([0, width]);
+      y = d3
+        .scaleLinear()
+        .domain([
+          -numDivEjeXInicial * k * transform.k + transform.y,
+          numDivEjeXInicial * k * transform.k + transform.y,
+        ])
+        .range([height, 0]);
+      gDot
+        .attr("transform", transform)
+        .attr("stroke-width", 5 / `scale(${transform.k}) translate(${transform.x}, ${transform.y})`.k);
+      gx.call(xAxis, x);
+      gy.call(yAxis, y);
+      gGrid.call(grid, x, y);
+      console.log("EQSPad: transform_useEffect:", transform);
+      console.log("EQSPad: zoomTransform_useEffect:", {
+        k: transform.k * zoomTransform.k,
+        x: transform.x + transform.k * zoomTransform.x,
+        y: transform.y + transform.k * zoomTransform.y,
+      });
+      actualizaZoomTransform({
+        k: transform.k * zoomTransform.k,
+        x: transform.x + transform.k * zoomTransform.x,
+        y: transform.y + transform.k * zoomTransform.y,
+      });
+    }
+
+    return actualizaPadreDesdeHijo();
+  }, [Geom, height, width]);
+    
   return <svg ref={refToSvg} onChange={actualizaPadre} onClick={handleClick} />;
 });
 

@@ -19,29 +19,40 @@ function App() {
     });
     
     const actualizaHijo = (newDatos) =>{
+      console.log("Appjs: Iniciando_actualizaHijo...");
+      console.log("Appjs: newDatos_actualizaHijo:", newDatos);
       ref.current.actualizaDatos(newDatos);
     }
 
     const actualizaPadre = (newDato) =>{
+      console.log("Appjs: Iniciando_actualizaPadre...");
+      console.log("Appjs: newDato_actualizaPadre:", newDato);
       setValorParaHijo(newDato);
     }
 
     const actualizaWidth = (newWidth) => {
+      // console.log("Appjs: Iniciando_actualizaWidth...");
+      // console.log("Appjs: newDato_actualizaWidth:", newWidth);
       setWidth(newWidth);
     };
     const actualizaHeigth = (newHeight) => {
+      // console.log("Appjs: Iniciando_actualizaHegith...");
+      // console.log("Appjs: newDato_actualizaHeigth:", newHeight);
       setHeight(newHeight);
     };
 
     useEffect(() => {
+      // console.log("Appjs: Iniciando_useEffect (actualizaHeigth)...");
       actualizaHeigth(height);
     }, [height]);
 
     useEffect(() => {
+      // console.log("Appjs: Iniciando_useEffect (actualizaWidth)...");
       actualizaWidth(width);
     }, [width]);
 
     useEffect(() => {
+      console.log("Appjs: Iniciando_useEffect (iniciando state / actualizaHijo / actualizaPadre)...");
           const inicia = () => {
             const Geom = generateDataset();
             const newDataset = {
@@ -55,9 +66,10 @@ function App() {
           }
           if(!valorparahijo){
             const nuevoValor = inicia();
-            console.log("nuevoValor", nuevoValor);
+            console.log("Appjs: useEffect (iniciando state)...nuevoValor:", nuevoValor);
           }
           else{
+            console.log("Appjs: useEffect (actualizaHijo)...valorparahijo:", valorparahijo);
             actualizaHijo(valorparahijo);
           }
         }, [valorparahijo, width, height]);
@@ -91,7 +103,7 @@ function App() {
   // }
   
 const generateDataset = () =>
-Array(10)
+Array(5)
   .fill(0)
   .map(() => [Math.random()/2 * 30, Math.random()/10 *30, 1]);
 
