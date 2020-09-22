@@ -23,8 +23,6 @@ const DwgPad = forwardRef((data, referencia) => {
   const numDivEjeXInicial = 10;
   const [height, setHeight] = useState(valorparahijo.height);
   const [width, setWidth] = useState(valorparahijo.width);
-  console.log("h", height);
-  console.log("w", width);
   //5. Actualización del hijo ordenada desde el padre (imperativa)
   useImperativeHandle(referencia, () => {
     return { actualizaDatos };
@@ -61,6 +59,9 @@ const DwgPad = forwardRef((data, referencia) => {
       0,
     ];
     actualizaDatos([...Geom, datoAUnir]);
+    // console.log(...Geom);
+    // console.log("datoAUnir", datoAUnir);
+    // console.log(...[...Geom, datoAUnir]);
     actualizaPadreDesdeHijo();
   };
   ////7.2 Actualiza el zoomTransform:
