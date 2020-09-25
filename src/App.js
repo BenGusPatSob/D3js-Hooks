@@ -1,6 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import './App.css';
 import DwgPad from "./DwgPad";
+import Navbar from 'react-bootstrap/Navbar';
+import Container from 'react-bootstrap/Container';
+import Row from 'react-bootstrap/Row';
+import Col from 'react-bootstrap/Col';
 //import InputText from "./InputText";
 
 
@@ -18,93 +22,65 @@ function App() {
       Geom: generateDataset()
     });
     
-    const actualizaHijo = (newDatos) =>{
-      console.log("Appjs: Iniciando_actualizaHijo...");
-      console.log("Appjs: newDatos_actualizaHijo:", newDatos);
-      ref.current.actualizaDatos(newDatos);
+    const actualizaHijo = (newDato) =>{
+      ref.current.actualizaDatos(newDato);
     }
 
     const actualizaPadre = (newDato) =>{
-      console.log("Appjs: Iniciando_actualizaPadre...");
-      console.log("Appjs: newDato_actualizaPadre:", newDato);
       setValorParaHijo(newDato);
     }
 
     const actualizaWidth = (newWidth) => {
-      // console.log("Appjs: Iniciando_actualizaWidth...");
-      // console.log("Appjs: newDato_actualizaWidth:", newWidth);
       setWidth(newWidth);
     };
     const actualizaHeigth = (newHeight) => {
-      // console.log("Appjs: Iniciando_actualizaHegith...");
-      // console.log("Appjs: newDato_actualizaHeigth:", newHeight);
       setHeight(newHeight);
     };
 
     useEffect(() => {
-      // console.log("Appjs: Iniciando_useEffect (actualizaHeigth)...");
-      actualizaHeigth(height);
+      actualizaHeigth(ref.current.height);
     }, [height]);
 
     useEffect(() => {
-      // console.log("Appjs: Iniciando_useEffect (actualizaWidth)...");
-      actualizaWidth(width);
+      actualizaWidth(ref.current.width);
     }, [width]);
 
     useEffect(() => {
-      console.log("Appjs: Iniciando_useEffect (iniciando state / actualizaHijo / actualizaPadre)...");
-          const inicia = () => {
-            const Geom = generateDataset();
-            const newDataset = {
-              width,
-              height,
-              zoomTransform: { k: 1, x: 0, y: 0 },
-              Geom,
-            };
-            actualizaPadre(newDataset);
-            actualizaHijo(newDataset);
-          }
-          if(!valorparahijo){
-            const nuevoValor = inicia();
-            console.log("Appjs: useEffect (iniciando state)...nuevoValor:", nuevoValor);
-          }
-          else{
-            console.log("Appjs: useEffect (actualizaHijo)...valorparahijo:", valorparahijo);
-            actualizaHijo(valorparahijo);
-          }
-        }, [valorparahijo, width, height]);
+        const inicia = () => {
+          const Geom = generateDataset();
+          const newDataset = {
+            width,
+            height,
+            zoomTransform: { k: 1, x: 0, y: 0 },
+            Geom,
+          };
+          actualizaPadre(newDataset);
+          actualizaHijo(newDataset);
+        }
+        if(!valorparahijo){
+          const nuevoValor = inicia();
+        }
+        else{
+          actualizaHijo(valorparahijo);
+        }
+      }, [valorparahijo, width, height]);
 
     return (
       <div>
-        <h1>EQSApp</h1>
-        <DwgPad data={{valorparahijo, actualizaPadre}} ref={ref} ></DwgPad>
+        {/* <Navbar bg="light">
+          <Navbar.Brand>EQSApp</Navbar.Brand>
+        </Navbar>
+        <DwgPad data={{valorparahijo, actualizaPadre}} ref={ref} ></DwgPad> */}
+        <Container>
+          <Row>
+            <Col xs={1} md={2} lg={2} xl={2}> </Col>
+            <Col xs={11} md={10} lg={5} xl={5}><DwgPad data={{valorparahijo, actualizaPadre}} ref={ref} ></DwgPad></Col>
+            <Col xs={11} md={12} lg={5} xl={5}><h2>DwgPadForm</h2></Col>   
+          </Row>
+        </Container>        
       </div>
     );
   }
-//*****************Manera de actualizar el padre desde el hijo */
-  // function Parent() {
-  //   const [value, setValue] = React.useState("");
-  
-  //   function handleChange(newValue) {
-  //     setValue(newValue);
-  //   }
-  
-  //   // We pass a callback to Child
-  //   return <Child value={value} onChange={handleChange} />;
-  // }
-  
-  // function Child(props) {
-  //   function handleChange(event) {
-  //     // Here, we invoke the callback with the new value
-  //     props.onChange(event.target.value);
-  //   }
-    
-  //   return <input value={props.value} onChange={handleChange} />
-  // }
-  
-const generateDataset = () =>
-Array(5)
-  .fill(0)
-  .map(() => [Math.random()/2 * 30, Math.random()/10 *30, 1]);
+const generateDataset = () => [[-200, -200, 1], [400, -200, 1], [500, 500, 1], [-200, 500, 1]];
 
 export default App;
