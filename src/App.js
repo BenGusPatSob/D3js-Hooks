@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
 import './App.css';
 import DwgPad from "./DwgPad";
-import Navbar from 'react-bootstrap/Navbar';
-import Container from 'react-bootstrap/Container';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
+//import Navbar from 'react-bootstrap/Navbar';
+// import Container from 'react-bootstrap/Container';
+// import Row from 'react-bootstrap/Row';
+// import Col from 'react-bootstrap/Col';
 //import InputText from "./InputText";
 
 
@@ -14,7 +14,7 @@ import Col from 'react-bootstrap/Col';
 function App() {
     const ref = useRef(null);
     const [width, setWidth] = useState(1000);
-    const [height, setHeight] = useState(800);
+    const [height, setHeight] = useState(500);
     const [valorparahijo, setValorParaHijo] = useState({
       width,
       height,
@@ -59,6 +59,7 @@ function App() {
         }
         if(!valorparahijo){
           const nuevoValor = inicia();
+          actualizaHijo(nuevoValor);
         }
         else{
           actualizaHijo(valorparahijo);
@@ -71,13 +72,14 @@ function App() {
           <Navbar.Brand>EQSApp</Navbar.Brand>
         </Navbar>
         <DwgPad data={{valorparahijo, actualizaPadre}} ref={ref} ></DwgPad> */}
-        <Container>
+        {/* <Container>
           <Row>
             <Col xs={1} md={2} lg={2} xl={2}> </Col>
             <Col xs={11} md={10} lg={5} xl={5}><DwgPad data={{valorparahijo, actualizaPadre}} ref={ref} ></DwgPad></Col>
             <Col xs={11} md={12} lg={5} xl={5}><h2>DwgPadForm</h2></Col>   
           </Row>
-        </Container>        
+        </Container>         */}
+        <DwgPad data={{valorparahijo, actualizaPadre}} ref={ref} ></DwgPad>
       </div>
     );
   }
