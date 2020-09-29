@@ -9,6 +9,7 @@ import React, {
 import * as d3 from "d3";
 import useMouse from "@react-hook/mouse-position";
 import {intersection as inters} from './Helpers';
+import { zoom } from "d3";
 
 //https://www.npmjs.com/package/@react-hook/mouse-position
 
@@ -222,6 +223,31 @@ const DwgPad = forwardRef((data, referencia) => {
   }, [Geom, geomTransf, zoomTransform, Vars, refToSvg]);
 
   useLayoutEffect(() => {
+
+    let A = [0, 0];
+    let B = [Vars.width, 0];
+    let C = [Vars.width, Vars.height];
+    let D = [0, Vars.height];
+    let AA = [zoomTransform.x, zoomTransform.y];
+    let DD = [zoomTransform.x, zoomTransform.y + Vars.height * zoomTransform.k];
+    let BB = [zoomTransform.x + Vars.width * zoomTransform.k, zoomTransform.y];
+    let OO = [(AA[0] + BB[0]) / 2, (AA[1] + DD[1]) / 2];
+    let AAAB = inters(AA, OO, A, B);
+    let AAAD = inters(AA, OO, A, D);
+    let DDAD = inters(DD, OO, A, D);
+    let BBAB = inters(BB, OO, A, B);
+    console.log("A", A);
+    console.log("B", B);
+    console.log("C   ", C   );  
+    console.log("D   ", D   );  
+    console.log("AA  ", AA  );  
+    console.log("DD  ", DD  );  
+    console.log("BB  ", BB  );  
+    console.log("OO  ", OO  );  
+    console.log("AAAB", AAAB);  
+    console.log("AAAD", AAAD);  
+    console.log("DDAD", DDAD);  
+    console.log("BBAB", BBAB);  
     console.log("__________________________________________");
     console.log("mouse.x", mouse.x);
     console.log("mouse.y", mouse.y);
@@ -295,6 +321,8 @@ const DwgPad = forwardRef((data, referencia) => {
 
   //9. GeometriaTranformada
   useLayoutEffect(() => {
+
+
     ////7.3. Genera geometria transformada por zoomTransform:
     const transformaGeometria = () => { 
       // console.log("DwgPad_useLayoutEffect_transformaGeometria: zoomTransform enviado", zoomTransform);
