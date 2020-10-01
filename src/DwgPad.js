@@ -20,27 +20,47 @@ const DwgPad = forwardRef((data, referencia) => {
   //2. Creamos referencia al svg (d3js):
   const refToSvg = useRef();
   //3. Establecemos los hooks:
-  const [svg, setSvg] = useState(() => d3.select(refToSvg.current))
+  const [svg, setSvg] = useState(() => d3.select(refToSvg.current));
   const [Geom, setGeom] = useState(valorparahijo.Geom);
-  const [zoomTransform, setZoomTransform] = useState(valorparahijo.zoomTransform)
-  const [geomTransf, setGeomTransf] = useState(() => Geom.map(d => [d[0]*zoomTransform.k + zoomTransform.x, d[1]*zoomTransform.k + zoomTransform.y, d[2]]));
-  const mouse = useMouse(refToSvg, { enterDelay: 500, leaveDelay: 500, fps: Infinity });
+  const [zoomTransform, setZoomTransform] = useState(
+    valorparahijo.zoomTransform
+  );
+  const [geomTransf, setGeomTransf] = useState(() =>
+    Geom.map((d) => [
+      d[0] * zoomTransform.k + zoomTransform.x,
+      d[1] * zoomTransform.k + zoomTransform.y,
+      d[2],
+    ])
+  );
+  const mouse = useMouse(refToSvg, {
+    enterDelay: 10,
+    leaveDelay: 10,
+    fps: 60,
+  });
   //4. Variables:
   const [height, setHeight] = useState(valorparahijo.height);
   const [width, setWidth] = useState(valorparahijo.width);
   const Bbox_Xinf = -500;
-  const Bbox_Xsup = 500
-  const Bbox_Yinf = -500
+  const Bbox_Xsup = 500;
+  const Bbox_Yinf = -500;
   const Bbox_Ysup = 500;
   const [puntoFlotante, setPuntoFlotante] = useState([]);
   const [tolGeom, setTolGeom] = useState(0.001);
   const [radPersPunto, setRadPersPunto] = useState(10);
   const [radEventPunto, setRadEventPunto] = useState(20);
   const [espEventSegmento, setEspEventoSegmento] = useState(20);
-  const [Vars, setVars] = useState({ height, width, tolGeom, radPersPunto, radEventPunto, espEventSegmento, Bbox_Xinf, Bbox_Xsup, Bbox_Yinf, Bbox_Ysup });
-
-
-
+  const [Vars, setVars] = useState({
+    height,
+    width,
+    tolGeom,
+    radPersPunto,
+    radEventPunto,
+    espEventSegmento,
+    Bbox_Xinf,
+    Bbox_Xsup,
+    Bbox_Yinf,
+    Bbox_Ysup,
+  });
 
   //5. Actualización del hijo ordenada desde el padre (imperativa)
   useImperativeHandle(referencia, () => {
@@ -73,14 +93,48 @@ const DwgPad = forwardRef((data, referencia) => {
     };
     // console.log("DwgPad_actualizaPadreDesdeHijo: objetoActualizado", objetoActualizado);
     actualizaPadre(objetoActualizado);
-  }
+  };
   //7. Gestores de eventos:
+
+  ////7.1 Gestor de los clicks:
+  const handleClick = () => {
+    const AA = [
+      (zoomTransform.x * mouse.elementWidth) / Vars.width,
+      (zoomTransform.y * mouse.elementHeight) / Vars.height,
+    ];
+    const BB = [
+      (zoomTransform.x * mouse.elementWidth) / Vars.width +
+        mouse.elementWidth * zoomTransform.k,
+      (zoomTransform.y * mouse.elementHeight) / Vars.height,
+    ];
+    const DD = [
+      (zoomTransform.x * mouse.elementWidth) / Vars.width,
+      (zoomTransform.y * mouse.elementHeight) / Vars.height +
+        mouse.elementHeight * zoomTransform.k,
+    ];
+    const OO = [(AA[0] + BB[0]) / 2, (AA[1] + DD[1]) / 2];
+    const P = [mouse.x, mouse.y];
+    const PR = [
+      (Vars.Bbox_Xinf * (P[0] - OO[0])) / (AA[0] - OO[0]),
+      (Vars.Bbox_Ysup *
+        (mouse.elementHeight / mouse.elementWidth) *
+        (P[1] - OO[1])) /
+        (AA[1] - OO[1]),
+      1,
+    ];
+    setGeom([...Geom, PR]);
+    actualizaDatos({
+      width: Vars.width,
+      height: Vars.height,
+      zoomTransform,
+      Geom: [...Geom, PR],
+    });
+  };
   ////7.2. Actualizador del zoom transform: movido dentro del useEffect...
   ////7.3. Genera geometria transformada por zoomTransform: movido a useEffect
 
   //8. El bloque de dibujo (d3js):
   useLayoutEffect(() => {
-
     const k = Vars.height / Vars.width;
     setSvg(d3.select(refToSvg.current));
     svg.selectAll("g").remove();
@@ -88,15 +142,28 @@ const DwgPad = forwardRef((data, referencia) => {
 
     let x = d3
       .scaleLinear()
-      .domain([Vars.Bbox_Xinf * (1 + zoomTransform.x / ((Vars.width / 2)*zoomTransform.k)), 
-               Vars.Bbox_Xsup * (-1 + (Vars.width - zoomTransform.x) / ((Vars.width / 2) * zoomTransform.k))])
+      .domain([
+        Vars.Bbox_Xinf *
+          (1 + zoomTransform.x / ((Vars.width / 2) * zoomTransform.k)),
+        Vars.Bbox_Xsup *
+          (-1 +
+            (Vars.width - zoomTransform.x) /
+              ((Vars.width / 2) * zoomTransform.k)),
+      ])
       .range([0, Vars.width]);
     //console.log("DwgPad_useEffect: x.domain", x.domain());
     let y = d3
       .scaleLinear()
-      .domain([ 
-        Vars.Bbox_Yinf * k * (-1 + (Vars.height - zoomTransform.y) / ((Vars.height / 2) * zoomTransform.k)),
-        Vars.Bbox_Ysup * k * (1 + (zoomTransform.y) / ((Vars.height / 2) * zoomTransform.k))])
+      .domain([
+        Vars.Bbox_Yinf *
+          k *
+          (-1 +
+            (Vars.height - zoomTransform.y) /
+              ((Vars.height / 2) * zoomTransform.k)),
+        Vars.Bbox_Ysup *
+          k *
+          (1 + zoomTransform.y / ((Vars.height / 2) * zoomTransform.k)),
+      ])
       .range([Vars.height, 0]);
     //console.log("DwgPad_useEffect: y.domain", y.domain());
     const xAxis = (g, x) =>
@@ -144,9 +211,7 @@ const DwgPad = forwardRef((data, referencia) => {
     gGrid.call(grid, x, y);
 
     //Geometria Persistida _ vertices:
-    const geomVertex = svg
-      .append("g")
-      .attr("fill", "none");
+    const geomVertex = svg.append("g").attr("fill", "none");
     geomVertex
       .selectAll("circle")
       .data(geomTransf)
@@ -164,28 +229,31 @@ const DwgPad = forwardRef((data, referencia) => {
     //Cdg tracker:
     const cdgLines = svg.append("g");
     cdgLines.exit().remove();
-    cdgLines.append("line")
-            .attr("x1", zoomTransform.x + zoomTransform.k * Vars.width / 2)
-            .attr("y1", 0)
-            .attr("x2", zoomTransform.x + zoomTransform.k * Vars.width / 2)
-            .attr("y2", Vars.height - 20)
-            .attr("stroke", "black")
-            .attr("stroke-width", 0.7);
-    cdgLines.append("line")
-            .attr("x1", 20)
-            .attr("y1", zoomTransform.y + zoomTransform.k * Vars.height / 2)
-            .attr("x2", Vars.width)
-            .attr("y2", zoomTransform.y + zoomTransform.k * Vars.height / 2)
-            .attr("stroke", "black")
-            .attr("stroke-width", 0.7);
-    cdgLines.append("circle")
-                    .attr("cx", zoomTransform.x + (Vars.width / 2) * zoomTransform.k)
-                    .attr("cy", zoomTransform.y + zoomTransform.k * Vars.height / 2)
-                    .attr("r", Vars.radPersPunto / 2)
-                    .attr("stroke", "black")
-                    .attr("stroke-width", 2)
-                    .attr("fill", "grey") 
-                    .attr("opacity", 0.2); 
+    cdgLines
+      .append("line")
+      .attr("x1", zoomTransform.x + (zoomTransform.k * Vars.width) / 2)
+      .attr("y1", 0)
+      .attr("x2", zoomTransform.x + (zoomTransform.k * Vars.width) / 2)
+      .attr("y2", Vars.height - 20)
+      .attr("stroke", "black")
+      .attr("stroke-width", 0.7);
+    cdgLines
+      .append("line")
+      .attr("x1", 20)
+      .attr("y1", zoomTransform.y + (zoomTransform.k * Vars.height) / 2)
+      .attr("x2", Vars.width)
+      .attr("y2", zoomTransform.y + (zoomTransform.k * Vars.height) / 2)
+      .attr("stroke", "black")
+      .attr("stroke-width", 0.7);
+    cdgLines
+      .append("circle")
+      .attr("cx", zoomTransform.x + (Vars.width / 2) * zoomTransform.k)
+      .attr("cy", zoomTransform.y + (zoomTransform.k * Vars.height) / 2)
+      .attr("r", Vars.radPersPunto / 2)
+      .attr("stroke", "black")
+      .attr("stroke-width", 2)
+      .attr("fill", "grey")
+      .attr("opacity", 0.2);
 
     const zoom = d3.zoom().scaleExtent([0.1, 50]).on("zoom", zoomed);
     svg.call(zoom);
@@ -193,258 +261,228 @@ const DwgPad = forwardRef((data, referencia) => {
 
     function zoomed({ transform }) {
       setZoomTransform({
-          k: transform.k,
-          x: transform.x,
-          y: transform.y,
-        })
+        k: transform.k,
+        x: transform.x,
+        y: transform.y,
+      });
     }
     //return actualizaPadreDesdeHijo();
   }, [Geom, geomTransf, zoomTransform, Vars, refToSvg]);
 
+  useLayoutEffect(() => {
+    if (mouse.x != null) {
+      svg.selectAll(".temp").remove();
+      const geomVertexFlotante = svg.append("g");
+      geomVertexFlotante.exit().remove();
+      geomVertexFlotante
+        .append("circle")
+        .attr("cx", mouse.x / (mouse.elementWidth / Vars.width))
+        .attr("cy", mouse.y / (mouse.elementHeight / Vars.height))
+        .attr("r", Vars.radEventPunto / 4)
+        .classed("temp", true)
+        .attr("stroke", "black")
+        .attr("stroke-width", 1)
+        .attr("fill", "none");
+      geomVertexFlotante
+        .append("line")
+        .attr("x1", mouse.x / (mouse.elementWidth / Vars.width))
+        .attr("y1", mouse.y / (mouse.elementHeight / Vars.height) - 3* Vars.radEventPunto / 2)
+        .attr("x2", mouse.x / (mouse.elementWidth / Vars.width))
+        .attr("y2", mouse.y / (mouse.elementHeight / Vars.height) - Vars.radEventPunto / 4)
+        .classed("temp", true)
+        .attr("stroke", "black")
+        .attr("stroke-width", 0.7);
+      geomVertexFlotante
+        .append("line")
+        .attr("x1", mouse.x / (mouse.elementWidth / Vars.width))
+        .attr("y1", mouse.y / (mouse.elementHeight / Vars.height) + 3* Vars.radEventPunto / 2)
+        .attr("x2", mouse.x / (mouse.elementWidth / Vars.width))
+        .attr("y2", mouse.y / (mouse.elementHeight / Vars.height) + Vars.radEventPunto / 4)
+        .classed("temp", true)
+        .attr("stroke", "black")
+        .attr("stroke-width", 0.7);
+      geomVertexFlotante
+        .append("line")
+        .attr("x1", mouse.x / (mouse.elementWidth / Vars.width) - 3* Vars.radEventPunto / 2)
+        .attr("y1", mouse.y / (mouse.elementHeight / Vars.height))
+        .attr("x2", mouse.x / (mouse.elementWidth / Vars.width) - Vars.radEventPunto / 4)
+        .attr("y2", mouse.y / (mouse.elementHeight / Vars.height))
+        .classed("temp", true)
+        .attr("stroke", "black")
+        .attr("stroke-width", 0.7);
+      geomVertexFlotante
+        .append("line")
+        .attr("x1", mouse.x / (mouse.elementWidth / Vars.width) + 3* Vars.radEventPunto / 2)
+        .attr("y1", mouse.y / (mouse.elementHeight / Vars.height))
+        .attr("x2", mouse.x / (mouse.elementWidth / Vars.width) + Vars.radEventPunto / 4)
+        .attr("y2", mouse.y / (mouse.elementHeight / Vars.height))
+        .classed("temp", true)
+        .attr("stroke", "black")
+        .attr("stroke-width", 0.7);
+    }
 
-  ////7.1 Gestor de los clicks:
-  const handleClick = () => {
-    console.log("Clicked!!!!!!!!!!!!!!!!!!!!!");
-    console.log("zoom: ", zoomTransform);
-    const A = [0, 0];
-    const B = [mouse.elementWidth, 0];
-    const D = [0, mouse.elementHeight];
-    const AA = [zoomTransform.x * mouse.elementWidth / Vars.width, zoomTransform.y * mouse.elementHeight  / Vars.height];
-    const BB = [
-      zoomTransform.x * mouse.elementWidth / Vars.width +
-        mouse.elementWidth * zoomTransform.k,
-      zoomTransform.y * mouse.elementHeight / Vars.height
-    ];
-    const DD = [zoomTransform.x * mouse.elementWidth / Vars.width, zoomTransform.y * mouse.elementHeight / Vars.height + mouse.elementHeight * zoomTransform.k];
-    const O = [(A[0] + B[0]) / 2, (A[1] + D[1]) / 2];
-    const OO = [(AA[0] + BB[0]) / 2, (AA[1] + DD[1]) / 2];
-    const OtoOO = [OO[0] - O[0], OO[1] - O[1]];
-    const P = [ mouse.x, mouse.y ];
-    const PR = [
-      (Vars.Bbox_Xinf * (P[0] - OO[0])) / (AA[0] - OO[0]),
-      (Vars.Bbox_Ysup * (mouse.elementHeight / mouse.elementWidth) * (P[1] - OO[1])) / (AA[1] - OO[1]),
-      1
-    ];
-    console.log("O", O);
-    console.log("O_transf", [(O[0] - zoomTransform.x) / zoomTransform.k, (O[1] - zoomTransform.y) / zoomTransform.k]);
-    console.log("OtoOO", OtoOO);
-    console.log("A", A);
-    console.log("B", B);
-    console.log("D", D);
-    console.log("AA", AA);
-    console.log("BB", BB);
-    console.log("DD", DD);
-    console.log("OO", OO);
-    console.log("PR", PR);
-    console.log("O - OO", [O[0] - OO[0], O[1] - OO[1]]);
-    console.log("P", P);
-    console.log("mouse.x", mouse.x);
-    console.log("mouse.y", mouse.y);
-    console.log("mouse.clientX", mouse.clientX);
-    console.log("mouse.clientY", mouse.clientY);
-    console.log("mouse.elementHeight", mouse.elementHeight);
-    console.log("mouse.elementWidth", mouse.elementWidth);
-    console.log("mouse.isOver", mouse.isOver);
-    console.log("mouse.pageX", mouse.pageX);
-    console.log("mouse.pageY", mouse.pageY);
-    console.log("mouse.screenX", mouse.screenX);
-    console.log("mouse.screenY", mouse.screenY);
-    setGeom([...Geom, PR]);
-    actualizaDatos({width: Vars.width, height: Vars.height, zoomTransform, Geom: [...Geom, PR]});
-    // let x = d3
-    //   .scaleLinear()
-    //   .domain([Vars.Bbox_Xinf * (1 + zoomTransform.x / ((mouse.elementWidth  / 2)*zoomTransform.k)), 
-    //     Vars.Bbox_Xsup * (-1 + (mouse.elementWidth - zoomTransform.x) / ((mouse.elementWidth / 2) * zoomTransform.k))])
-    //   .range([0, mouse.elementWidth]);
-    // let y = d3
-    //   .scaleLinear()
-    //   .domain([ 
-    //     Vars.Bbox_Yinf * (mouse.elementHeight / width) * (-1 + (mouse.elementHeight - zoomTransform.y) / ((mouse.elementHeight / 2) * zoomTransform.k)),
-    //     Vars.Bbox_Ysup * (mouse.elementHeight / width) * (1 + (zoomTransform.y) / ((mouse.elementHeight / 2) * zoomTransform.k))])
-    //   .range([mouse.elementHeight, 0]);
-    // let datoAUnir = [
-    //   x.invert(mouse.x),
-    //   y.invert(mouse.y),
-    //   1
-    // ];
-    // setGeom([...Geom, datoAUnir]);
-    // actualizaDatos({width: Vars.width, height: Vars.height, zoomTransform, Geom: [...Geom, datoAUnir]});
-    ////actualizaPadreDesdeHijo();
-  };
-
+    if (mouse.isOver) {
+      const AA = [
+        (zoomTransform.x * mouse.elementWidth) / Vars.width,
+        (zoomTransform.y * mouse.elementHeight) / Vars.height,
+      ];
+      const BB = [
+        (zoomTransform.x * mouse.elementWidth) / Vars.width +
+          mouse.elementWidth * zoomTransform.k,
+        (zoomTransform.y * mouse.elementHeight) / Vars.height,
+      ];
+      const DD = [
+        (zoomTransform.x * mouse.elementWidth) / Vars.width,
+        (zoomTransform.y * mouse.elementHeight) / Vars.height +
+          mouse.elementHeight * zoomTransform.k,
+      ];
+      const OO = [(AA[0] + BB[0]) / 2, (AA[1] + DD[1]) / 2];
+      const P = [mouse.x, mouse.y];
+      const PR = [
+        (Vars.Bbox_Xinf * (P[0] - OO[0])) / (AA[0] - OO[0]),
+        (Vars.Bbox_Ysup *
+          (mouse.elementHeight / mouse.elementWidth) *
+          (P[1] - OO[1])) /
+          (AA[1] - OO[1]),
+        1,
+      ];
+      setPuntoFlotante(PR);
+    }
+  }, [mouse, zoomTransform, Vars, svg]);
 
   useLayoutEffect(() => {
-    if(mouse.isOver){
-    console.log("Moved!!!!!!!!!!!!!!!!!!!!!!!!!");
-    console.log("zoom: ", zoomTransform);
-    const A = [0, 0];
-    const B = [mouse.elementWidth, 0];
-    const D = [0, mouse.elementHeight];
-    const AA = [zoomTransform.x * mouse.elementWidth / Vars.width, zoomTransform.y * mouse.elementHeight  / Vars.height];
-    const BB = [
-      zoomTransform.x * mouse.elementWidth / Vars.width +
-        mouse.elementWidth * zoomTransform.k,
-      zoomTransform.y * mouse.elementHeight / Vars.height
-    ];
-    const DD = [zoomTransform.x * mouse.elementWidth / Vars.width, zoomTransform.y * mouse.elementHeight / Vars.height + mouse.elementHeight * zoomTransform.k];
-    const O = [(A[0] + B[0]) / 2, (A[1] + D[1]) / 2];
-    const OO = [(AA[0] + BB[0]) / 2, (AA[1] + DD[1]) / 2];
-    const OtoOO = [OO[0] - O[0], OO[1] - O[1]];
-    const P = [ mouse.x, mouse.y ];
-    const PR = [
-      (Vars.Bbox_Xinf * (P[0] - OO[0])) / (AA[0] - OO[0]),
-      (Vars.Bbox_Ysup * (mouse.elementHeight / mouse.elementWidth) * (P[1] - OO[1])) / (AA[1] - OO[1]),
-      1
-    ];
-    console.log("O", O);
-    console.log("O_transf", [(O[0] - zoomTransform.x) / zoomTransform.k, (O[1] - zoomTransform.y) / zoomTransform.k]);
-    console.log("OtoOO", OtoOO);
-    console.log("A", A);
-    console.log("B", B);
-    console.log("D", D);
-    console.log("AA", AA);
-    console.log("BB", BB);
-    console.log("DD", DD);
-    console.log("OO", OO);
-    console.log("PR", PR);
-    console.log("O - OO", [O[0] - OO[0], O[1] - OO[1]]);
-    console.log("P", P);
-    console.log("mouse.x", mouse.x);
-    console.log("mouse.y", mouse.y);
-    console.log("mouse.clientX", mouse.clientX);
-    console.log("mouse.clientY", mouse.clientY);
-    console.log("mouse.elementHeight", mouse.elementHeight);
-    console.log("mouse.elementWidth", mouse.elementWidth);
-    console.log("mouse.isOver", mouse.isOver);
-    console.log("mouse.pageX", mouse.pageX);
-    console.log("mouse.pageY", mouse.pageY);
-    console.log("mouse.screenX", mouse.screenX);
-    console.log("mouse.screenY", mouse.screenY);
-    console.log("Geom", Geom);
-    //console.log("myDwgPad.marginLeft", Document.getElementById("myDwgPad").style.margin );
-    setPuntoFlotante(PR); 
-    // let A = [0, 0];
-    // let B = [Vars.width, 0];
-    // let C = [Vars.width, Vars.height];
-    // let D = [0, Vars.height];
-    // let AA = [zoomTransform.x, zoomTransform.y];
-    // let DD = [zoomTransform.x, zoomTransform.y + Vars.height * zoomTransform.k];
-    // let BB = [zoomTransform.x + Vars.width * zoomTransform.k, zoomTransform.y];
-    // let OO = [(AA[0] + BB[0]) / 2, (AA[1] + DD[1]) / 2];
-    // let AAAB = inters(AA, OO, A, B);
-    // let AAAD = inters(AA, OO, A, D);
-    // let DDAD = inters(DD, OO, A, D);
-    // let BBAB = inters(BB, OO, A, B);
-    // console.log("A", A);
-    // console.log("B", B);
-    // console.log("C   ", C   );  
-    // console.log("D   ", D   );  
-    // console.log("AA  ", AA  );  
-    // console.log("DD  ", DD  );  
-    // console.log("BB  ", BB  );  
-    // console.log("OO  ", OO  );  
-    // console.log("AAAB", AAAB);  
-    // console.log("AAAD", AAAD);  
-    // console.log("DDAD", DDAD);  
-    // console.log("BBAB", BBAB);  
-    // console.log("mouse.x", mouse.x);
-    // console.log("mouse.y", mouse.y);
-    // console.log("mouse.clientX", mouse.clientX);
-    // console.log("mouse.clientY", mouse.clientY);
-    // console.log("mouse.elementHeight", mouse.elementHeight);
-    // console.log("mouse.elementWidth", mouse.elementWidth);
-    // console.log("mouse.isOver", mouse.isOver);
-    // console.log("mouse.pageX", mouse.pageX);
-    // console.log("mouse.pageY", mouse.pageY);
-    // console.log("mouse.screenX", mouse.screenX);
-    // console.log("mouse.screenY", mouse.screenY);
 
-
-    if(mouse.x != null){
-        // try {
-        // svg.selectAll(".temp").remove();
-        // let circles = svg.selectAll("circle")
-        //     .data([mouse.x, mouse.y])
-        //     .enter()
-        //     .append("circle")
-        //     .attr("cx", function(d) {return d[0];})
-        //     .attr("cy", function(d) {return d[1];})
-        //     .attr("r", 5)
-        //     .classed("temp", true )
-        //     .attr("stroke", "black")
-        //     .attr("stroke-width", 0.5)
-        //     .style("fill", "black");
-        // console.log("circles: ", circles.attr);
-        // //Geometria Flotante _ punto:
-        svg.selectAll(".temp").remove();
-        const geomVertexFlotante = svg.append("g");
-        geomVertexFlotante.exit().remove();
-        geomVertexFlotante.append("circle")
-                        .attr("cx", mouse.x / (mouse.elementWidth / Vars.width))
-                        .attr("cy", mouse.y / (mouse.elementHeight / Vars.height))
-                        .attr("r", Vars.radEventPunto/10)
-                        .classed("temp", true )
-                        .attr("stroke", "black")
-                        .attr("stroke-width", 5)
-                        .attr("fill", "black"); 
-        // const eleminaElPunto = setInterval(() => {      
-        //   geomVertexFlotante.exit().remove();
-        // }, 100);
-        // return clearInterval(eleminaElPunto);
-        // } catch (error) {
-        // }
-
-
-      let x = d3
-        .scaleLinear()
-        .domain([Vars.Bbox_Xinf * (1 + zoomTransform.x / ((mouse.elementWidth  / 2)*zoomTransform.k)), 
-                Vars.Bbox_Xsup * (-1 + (mouse.elementWidth - zoomTransform.x) / ((mouse.elementWidth / 2) * zoomTransform.k))])
-        .range([0, mouse.elementWidth]);
-      let y = d3
-        .scaleLinear()
-        .domain([ 
-          Vars.Bbox_Yinf * (mouse.elementHeight / Vars.width) * (-1 + (mouse.elementHeight - zoomTransform.y) / ((mouse.elementHeight / 2) * zoomTransform.k)),
-          Vars.Bbox_Ysup * (mouse.elementHeight / Vars.width) * (1 + (zoomTransform.y) / ((mouse.elementHeight / 2) * zoomTransform.k))])
-        .range([mouse.elementHeight, 0]);
-      const pFloat = [ x.invert(mouse.x), y.invert(mouse.y), 1 ];
-      //setPuntoFlotante(pFloat);    
-      }  
+    if (mouse.isOver) {
+      const AA = [
+        (zoomTransform.x * mouse.elementWidth) / Vars.width,
+        (zoomTransform.y * mouse.elementHeight) / Vars.height,
+      ];
+      const BB = [
+        (zoomTransform.x * mouse.elementWidth) / Vars.width +
+          mouse.elementWidth * zoomTransform.k,
+        (zoomTransform.y * mouse.elementHeight) / Vars.height,
+      ];
+      const DD = [
+        (zoomTransform.x * mouse.elementWidth) / Vars.width,
+        (zoomTransform.y * mouse.elementHeight) / Vars.height +
+          mouse.elementHeight * zoomTransform.k,
+      ];
+      const OO = [(AA[0] + BB[0]) / 2, (AA[1] + DD[1]) / 2];
+      const P = [mouse.x, mouse.y];
+      const PR = [
+        (Vars.Bbox_Xinf * (P[0] - OO[0])) / (AA[0] - OO[0]),
+        (Vars.Bbox_Ysup *
+          (mouse.elementHeight / mouse.elementWidth) *
+          (P[1] - OO[1])) /
+          (AA[1] - OO[1]),
+        1,
+      ];
+      setPuntoFlotante(PR);
     }
-  }, [mouse, zoomTransform, Vars, svg])
+  }, [mouse, zoomTransform, Vars]);
 
-  // useLayoutEffect(() => {
-  //   console.log("DwgPad_useLayoutEffect: PuntoFlotante", [
-  //     (mouse.x - zoomTransform.x) / zoomTransform.k,
-  //     (mouse.elementHeight - mouse.y - zoomTransform.y) / zoomTransform.k,
-  //     1
-  //   ]);
-  //   // console.log("DwgPad_useLayoutEffect: PuntoFlotante", [
-  //   //   (-mouse.x / zoomTransform.k + zoomTransform.x + (width / 2) * zoomTransform.k) * Bbox_Xinf / ((width / 2) * zoomTransform.k),
-  //   //   (-mouse.y / zoomTransform.k + zoomTransform.y + (width / 2) * zoomTransform.k - (width - height) * zoomTransform.k / 2) * Bbox_Ysup / ((width / 2) * zoomTransform.k),
-  //   //   1
-  //   // ]);
-  //   setPuntoFlotante([
-  //     (mouse.x - zoomTransform.x) / zoomTransform.k,
-  //     (mouse.elementHeight - mouse.y - zoomTransform.y) / zoomTransform.k,
-  //     1
-  //   ]);
-  // }, [mouse, zoomTransform])
+  useLayoutEffect(() => {
+    if (mouse.x != null) {
+      svg.selectAll(".temp").remove();
+      const geomVertexFlotante = svg.append("g");
+      geomVertexFlotante.exit().remove();
+      geomVertexFlotante
+        .append("circle")
+        .attr("cx", mouse.x / (mouse.elementWidth / Vars.width))
+        .attr("cy", mouse.y / (mouse.elementHeight / Vars.height))
+        .attr("r", Vars.radEventPunto / 4)
+        .classed("temp", true)
+        .attr("stroke", "black")
+        .attr("stroke-width", 1)
+        .attr("fill", "none");
+      geomVertexFlotante
+        .append("line")
+        .attr("x1", mouse.x / (mouse.elementWidth / Vars.width))
+        .attr(
+          "y1",
+          mouse.y / (mouse.elementHeight / Vars.height) -
+            (3 * Vars.radEventPunto) / 2
+        )
+        .attr("x2", mouse.x / (mouse.elementWidth / Vars.width))
+        .attr(
+          "y2",
+          mouse.y / (mouse.elementHeight / Vars.height) - Vars.radEventPunto / 4
+        )
+        .classed("temp", true)
+        .attr("stroke", "black")
+        .attr("stroke-width", 0.7);
+      geomVertexFlotante
+        .append("line")
+        .attr("x1", mouse.x / (mouse.elementWidth / Vars.width))
+        .attr(
+          "y1",
+          mouse.y / (mouse.elementHeight / Vars.height) +
+            (3 * Vars.radEventPunto) / 2
+        )
+        .attr("x2", mouse.x / (mouse.elementWidth / Vars.width))
+        .attr(
+          "y2",
+          mouse.y / (mouse.elementHeight / Vars.height) + Vars.radEventPunto / 4
+        )
+        .classed("temp", true)
+        .attr("stroke", "black")
+        .attr("stroke-width", 0.7);
+      geomVertexFlotante
+        .append("line")
+        .attr(
+          "x1",
+          mouse.x / (mouse.elementWidth / Vars.width) -
+            (3 * Vars.radEventPunto) / 2
+        )
+        .attr("y1", mouse.y / (mouse.elementHeight / Vars.height))
+        .attr(
+          "x2",
+          mouse.x / (mouse.elementWidth / Vars.width) - Vars.radEventPunto / 4
+        )
+        .attr("y2", mouse.y / (mouse.elementHeight / Vars.height))
+        .classed("temp", true)
+        .attr("stroke", "black")
+        .attr("stroke-width", 0.7);
+      geomVertexFlotante
+        .append("line")
+        .attr(
+          "x1",
+          mouse.x / (mouse.elementWidth / Vars.width) +
+            (3 * Vars.radEventPunto) / 2
+        )
+        .attr("y1", mouse.y / (mouse.elementHeight / Vars.height))
+        .attr(
+          "x2",
+          mouse.x / (mouse.elementWidth / Vars.width) + Vars.radEventPunto / 4
+        )
+        .attr("y2", mouse.y / (mouse.elementHeight / Vars.height))
+        .classed("temp", true)
+        .attr("stroke", "black")
+        .attr("stroke-width", 0.7);
+    }
+    
+  }, [mouse, Vars, svg]);
 
   //9. GeometriaTranformada
   useLayoutEffect(() => {
-
-
     ////7.3. Genera geometria transformada por zoomTransform:
-    const transformaGeometria = () => { 
-      // console.log("DwgPad_useLayoutEffect_transformaGeometria: zoomTransform enviado", zoomTransform);
-      // console.log("DwgPad_useLayoutEffect_transformaGeometria: geometriaTransformada", Geom.map(d => [d[0]*zoomTransform.k + zoomTransform.x, d[1]*zoomTransform.k + zoomTransform.y, d[2]]));
-      ////setGeomTransf( Geom.map(d => [d[0]*zoomTransform.k + zoomTransform.x, height - d[1]*zoomTransform.k + zoomTransform.y, d[2]]) );
-      setGeomTransf( Geom.map(d => [zoomTransform.x + (Vars.width / 2) * zoomTransform.k - (Vars.width / 2) * zoomTransform.k * d[0] / Vars.Bbox_Xinf, 
-                                    (zoomTransform.y + (Vars.width / 2) * zoomTransform.k - (Vars.width / 2) * zoomTransform.k * d[1] / Vars.Bbox_Ysup - (Vars.width - Vars.height) * zoomTransform.k / 2), d[2]]) );
+    const transformaGeometria = () => {
+      setGeomTransf(
+        Geom.map((d) => [
+          zoomTransform.x +
+            (Vars.width / 2) * zoomTransform.k -
+            ((Vars.width / 2) * zoomTransform.k * d[0]) / Vars.Bbox_Xinf,
+          zoomTransform.y +
+            (Vars.width / 2) * zoomTransform.k -
+            ((Vars.width / 2) * zoomTransform.k * d[1]) / Vars.Bbox_Ysup -
+            ((Vars.width - Vars.height) * zoomTransform.k) / 2,
+          d[2],
+        ])
+      );
     };
     return transformaGeometria();
   }, [zoomTransform, Geom, Vars]);
-    
+
   return <svg ref={refToSvg} onChange={actualizaPadre} onClick={handleClick} />;
 });
 
