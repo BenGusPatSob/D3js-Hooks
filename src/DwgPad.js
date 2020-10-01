@@ -22,9 +22,7 @@ const DwgPad = forwardRef((data, referencia) => {
   //3. Establecemos los hooks:
   const [svg, setSvg] = useState(() => d3.select(refToSvg.current));
   const [Geom, setGeom] = useState(valorparahijo.Geom);
-  const [zoomTransform, setZoomTransform] = useState(
-    valorparahijo.zoomTransform
-  );
+  const [zoomTransform, setZoomTransform] = useState( valorparahijo.zoomTransform );
   const [geomTransf, setGeomTransf] = useState(() =>
     Geom.map((d) => [
       d[0] * zoomTransform.k + zoomTransform.x,
@@ -350,7 +348,7 @@ const DwgPad = forwardRef((data, referencia) => {
     }
   }, [mouse, zoomTransform, Vars, svg]);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
 
     if (mouse.isOver) {
       const AA = [
