@@ -14,7 +14,7 @@ import DwgPad from "./DwgPad";
 function App() {
     const ref = useRef(null);
     const [width, setWidth] = useState(1000);
-    const [height, setHeight] = useState(500);
+    const [height, setHeight] = useState(800);
     const [valorparahijo, setValorParaHijo] = useState({
       width,
       height,
@@ -79,10 +79,10 @@ function App() {
             <Col xs={11} md={12} lg={5} xl={5}><h2>DwgPadForm</h2></Col>   
           </Row>
         </Container>         */}
-        <DwgPad data={{valorparahijo, actualizaPadre}} ref={ref} ></DwgPad>
+        <DwgPad data={{valorparahijo, actualizaPadre}} ref={ref} id="myDwgPad" ></DwgPad>
       </div>
     );
   }
-const generateDataset = () => [[-200, -200, 1], [400, -200, 1], [500, 500, 1], [-200, 500, 1]];
+const generateDataset = () => [[-500, -400, 1], [500, -400, 1], [500, 400, 1], [-500, 400]];
 
 export default App;
