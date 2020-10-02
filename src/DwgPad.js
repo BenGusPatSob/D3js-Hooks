@@ -166,12 +166,14 @@ const DwgPad = forwardRef((data, referencia) => {
     //console.log("DwgPad_useEffect: y.domain", y.domain());
     const xAxis = (g, x) =>
       g
+        .style("font", "20px OCR A Std, monospace")
         .attr("transform", `translate(0,${Vars.height})`)
-        .call(d3.axisTop(x).ticks(10))
+        .call(d3.axisTop(x).ticks(5))
         .call((g) => g.select(".domain").attr("display", "none"));
     const yAxis = (g, y) =>
       g
-        .call(d3.axisRight(y).ticks(10 * k))
+        .style("font", "20px OCR A Std, monospace")
+        .call(d3.axisRight(y).ticks(5 * k))
         .call((g) => g.select(".domain").attr("display", "none"));
 
     const grid = (g, x, y) =>
@@ -181,7 +183,7 @@ const DwgPad = forwardRef((data, referencia) => {
         .call((g) =>
           g
             .selectAll(".x")
-            .data(x.ticks(10))
+            .data(x.ticks(20))
             .join(
               (enter) =>
                 enter.append("line").attr("class", "x").attr("y2", Vars.height),
@@ -194,7 +196,7 @@ const DwgPad = forwardRef((data, referencia) => {
         .call((g) =>
           g
             .selectAll(".y")
-            .data(y.ticks(10 * k))
+            .data(y.ticks(20 * k))
             .join(
               (enter) =>
                 enter.append("line").attr("class", "y").attr("x2", Vars.width),
@@ -267,196 +269,139 @@ const DwgPad = forwardRef((data, referencia) => {
     //return actualizaPadreDesdeHijo();
   }, [Geom, geomTransf, zoomTransform, Vars, refToSvg]);
 
-  useLayoutEffect(() => {
-    if (mouse.x != null) {
-      svg.selectAll(".temp").remove();
-      const geomVertexFlotante = svg.append("g");
-      geomVertexFlotante.exit().remove();
-      geomVertexFlotante
-        .append("circle")
-        .attr("cx", mouse.x / (mouse.elementWidth / Vars.width))
-        .attr("cy", mouse.y / (mouse.elementHeight / Vars.height))
-        .attr("r", Vars.radEventPunto / 4)
-        .classed("temp", true)
-        .attr("stroke", "black")
-        .attr("stroke-width", 1)
-        .attr("fill", "none");
-      geomVertexFlotante
-        .append("line")
-        .attr("x1", mouse.x / (mouse.elementWidth / Vars.width))
-        .attr("y1", mouse.y / (mouse.elementHeight / Vars.height) - 3* Vars.radEventPunto / 2)
-        .attr("x2", mouse.x / (mouse.elementWidth / Vars.width))
-        .attr("y2", mouse.y / (mouse.elementHeight / Vars.height) - Vars.radEventPunto / 4)
-        .classed("temp", true)
-        .attr("stroke", "black")
-        .attr("stroke-width", 0.7);
-      geomVertexFlotante
-        .append("line")
-        .attr("x1", mouse.x / (mouse.elementWidth / Vars.width))
-        .attr("y1", mouse.y / (mouse.elementHeight / Vars.height) + 3* Vars.radEventPunto / 2)
-        .attr("x2", mouse.x / (mouse.elementWidth / Vars.width))
-        .attr("y2", mouse.y / (mouse.elementHeight / Vars.height) + Vars.radEventPunto / 4)
-        .classed("temp", true)
-        .attr("stroke", "black")
-        .attr("stroke-width", 0.7);
-      geomVertexFlotante
-        .append("line")
-        .attr("x1", mouse.x / (mouse.elementWidth / Vars.width) - 3* Vars.radEventPunto / 2)
-        .attr("y1", mouse.y / (mouse.elementHeight / Vars.height))
-        .attr("x2", mouse.x / (mouse.elementWidth / Vars.width) - Vars.radEventPunto / 4)
-        .attr("y2", mouse.y / (mouse.elementHeight / Vars.height))
-        .classed("temp", true)
-        .attr("stroke", "black")
-        .attr("stroke-width", 0.7);
-      geomVertexFlotante
-        .append("line")
-        .attr("x1", mouse.x / (mouse.elementWidth / Vars.width) + 3* Vars.radEventPunto / 2)
-        .attr("y1", mouse.y / (mouse.elementHeight / Vars.height))
-        .attr("x2", mouse.x / (mouse.elementWidth / Vars.width) + Vars.radEventPunto / 4)
-        .attr("y2", mouse.y / (mouse.elementHeight / Vars.height))
-        .classed("temp", true)
-        .attr("stroke", "black")
-        .attr("stroke-width", 0.7);
-    }
-
-    if (mouse.isOver) {
-      const AA = [
-        (zoomTransform.x * mouse.elementWidth) / Vars.width,
-        (zoomTransform.y * mouse.elementHeight) / Vars.height,
-      ];
-      const BB = [
-        (zoomTransform.x * mouse.elementWidth) / Vars.width +
-          mouse.elementWidth * zoomTransform.k,
-        (zoomTransform.y * mouse.elementHeight) / Vars.height,
-      ];
-      const DD = [
-        (zoomTransform.x * mouse.elementWidth) / Vars.width,
-        (zoomTransform.y * mouse.elementHeight) / Vars.height +
-          mouse.elementHeight * zoomTransform.k,
-      ];
-      const OO = [(AA[0] + BB[0]) / 2, (AA[1] + DD[1]) / 2];
-      const P = [mouse.x, mouse.y];
-      const PR = [
-        (Vars.Bbox_Xinf * (P[0] - OO[0])) / (AA[0] - OO[0]),
-        (Vars.Bbox_Ysup *
-          (mouse.elementHeight / mouse.elementWidth) *
-          (P[1] - OO[1])) /
-          (AA[1] - OO[1]),
-        1,
-      ];
-      setPuntoFlotante(PR);
-    }
-  }, [mouse, zoomTransform, Vars, svg]);
+  const getPR = () => {
+    const AA = [
+      (zoomTransform.x * mouse.elementWidth) / Vars.width,
+      (zoomTransform.y * mouse.elementHeight) / Vars.height,
+    ];
+    const BB = [
+      (zoomTransform.x * mouse.elementWidth) / Vars.width +
+        mouse.elementWidth * zoomTransform.k,
+      (zoomTransform.y * mouse.elementHeight) / Vars.height,
+    ];
+    const DD = [
+      (zoomTransform.x * mouse.elementWidth) / Vars.width,
+      (zoomTransform.y * mouse.elementHeight) / Vars.height +
+        mouse.elementHeight * zoomTransform.k,
+    ];
+    const OO = [(AA[0] + BB[0]) / 2, (AA[1] + DD[1]) / 2];
+    const P = [mouse.x, mouse.y];
+    const PR = [
+      (Vars.Bbox_Xinf * (P[0] - OO[0])) / (AA[0] - OO[0]),
+      (Vars.Bbox_Ysup *
+        (mouse.elementHeight / mouse.elementWidth) *
+        (P[1] - OO[1])) /
+        (AA[1] - OO[1]),
+      1,
+    ];
+    return PR;
+  }
 
   useEffect(() => {
-
     if (mouse.isOver) {
-      const AA = [
-        (zoomTransform.x * mouse.elementWidth) / Vars.width,
-        (zoomTransform.y * mouse.elementHeight) / Vars.height,
-      ];
-      const BB = [
-        (zoomTransform.x * mouse.elementWidth) / Vars.width +
-          mouse.elementWidth * zoomTransform.k,
-        (zoomTransform.y * mouse.elementHeight) / Vars.height,
-      ];
-      const DD = [
-        (zoomTransform.x * mouse.elementWidth) / Vars.width,
-        (zoomTransform.y * mouse.elementHeight) / Vars.height +
-          mouse.elementHeight * zoomTransform.k,
-      ];
-      const OO = [(AA[0] + BB[0]) / 2, (AA[1] + DD[1]) / 2];
-      const P = [mouse.x, mouse.y];
-      const PR = [
-        (Vars.Bbox_Xinf * (P[0] - OO[0])) / (AA[0] - OO[0]),
-        (Vars.Bbox_Ysup *
-          (mouse.elementHeight / mouse.elementWidth) *
-          (P[1] - OO[1])) /
-          (AA[1] - OO[1]),
-        1,
-      ];
-      setPuntoFlotante(PR);
+      setPuntoFlotante(getPR());
     }
   }, [mouse, zoomTransform, Vars]);
 
   useLayoutEffect(() => {
-    if (mouse.x != null) {
-      svg.selectAll(".temp").remove();
-      const geomVertexFlotante = svg.append("g");
-      geomVertexFlotante.exit().remove();
-      geomVertexFlotante
-        .append("circle")
-        .attr("cx", mouse.x / (mouse.elementWidth / Vars.width))
-        .attr("cy", mouse.y / (mouse.elementHeight / Vars.height))
-        .attr("r", Vars.radEventPunto / 4)
-        .classed("temp", true)
-        .attr("stroke", "black")
-        .attr("stroke-width", 1)
-        .attr("fill", "none");
-      geomVertexFlotante
-        .append("line")
-        .attr("x1", mouse.x / (mouse.elementWidth / Vars.width))
-        .attr(
-          "y1",
-          mouse.y / (mouse.elementHeight / Vars.height) -
-            (3 * Vars.radEventPunto) / 2
-        )
-        .attr("x2", mouse.x / (mouse.elementWidth / Vars.width))
-        .attr(
-          "y2",
-          mouse.y / (mouse.elementHeight / Vars.height) - Vars.radEventPunto / 4
-        )
-        .classed("temp", true)
-        .attr("stroke", "black")
-        .attr("stroke-width", 0.7);
-      geomVertexFlotante
-        .append("line")
-        .attr("x1", mouse.x / (mouse.elementWidth / Vars.width))
-        .attr(
-          "y1",
-          mouse.y / (mouse.elementHeight / Vars.height) +
-            (3 * Vars.radEventPunto) / 2
-        )
-        .attr("x2", mouse.x / (mouse.elementWidth / Vars.width))
-        .attr(
-          "y2",
-          mouse.y / (mouse.elementHeight / Vars.height) + Vars.radEventPunto / 4
-        )
-        .classed("temp", true)
-        .attr("stroke", "black")
-        .attr("stroke-width", 0.7);
-      geomVertexFlotante
-        .append("line")
-        .attr(
-          "x1",
-          mouse.x / (mouse.elementWidth / Vars.width) -
-            (3 * Vars.radEventPunto) / 2
-        )
-        .attr("y1", mouse.y / (mouse.elementHeight / Vars.height))
-        .attr(
-          "x2",
-          mouse.x / (mouse.elementWidth / Vars.width) - Vars.radEventPunto / 4
-        )
-        .attr("y2", mouse.y / (mouse.elementHeight / Vars.height))
-        .classed("temp", true)
-        .attr("stroke", "black")
-        .attr("stroke-width", 0.7);
-      geomVertexFlotante
-        .append("line")
-        .attr(
-          "x1",
-          mouse.x / (mouse.elementWidth / Vars.width) +
-            (3 * Vars.radEventPunto) / 2
-        )
-        .attr("y1", mouse.y / (mouse.elementHeight / Vars.height))
-        .attr(
-          "x2",
-          mouse.x / (mouse.elementWidth / Vars.width) + Vars.radEventPunto / 4
-        )
-        .attr("y2", mouse.y / (mouse.elementHeight / Vars.height))
-        .classed("temp", true)
-        .attr("stroke", "black")
-        .attr("stroke-width", 0.7);
+    svg.selectAll(".temp").remove();
+    if (mouse.isOver){
+      if (mouse.x != null) {
+        const geomFlotante = svg.append("g");
+        geomFlotante.exit().remove();
+        geomFlotante
+          .append("circle")
+          .attr("cx", mouse.x / (mouse.elementWidth / Vars.width))
+          .attr("cy", mouse.y / (mouse.elementHeight / Vars.height))
+          .attr("r", Vars.radEventPunto / 4)
+          .classed("temp", true)
+          .attr("stroke", "black")
+          .attr("stroke-width", 1)
+          .attr("fill", "none");
+        geomFlotante
+          .append("line")
+          .attr("x1", mouse.x / (mouse.elementWidth / Vars.width))
+          .attr(
+            "y1",
+            mouse.y / (mouse.elementHeight / Vars.height) -
+              (3 * Vars.radEventPunto) / 2
+          )
+          .attr("x2", mouse.x / (mouse.elementWidth / Vars.width))
+          .attr(
+            "y2",
+            mouse.y / (mouse.elementHeight / Vars.height) - Vars.radEventPunto / 4
+          )
+          .classed("temp", true)
+          .attr("stroke", "black")
+          .attr("stroke-width", 0.7);
+        geomFlotante
+          .append("line")
+          .attr("x1", mouse.x / (mouse.elementWidth / Vars.width))
+          .attr(
+            "y1",
+            mouse.y / (mouse.elementHeight / Vars.height) +
+              (3 * Vars.radEventPunto) / 2
+          )
+          .attr("x2", mouse.x / (mouse.elementWidth / Vars.width))
+          .attr(
+            "y2",
+            mouse.y / (mouse.elementHeight / Vars.height) + Vars.radEventPunto / 4
+          )
+          .classed("temp", true)
+          .attr("stroke", "black")
+          .attr("stroke-width", 0.7);
+        geomFlotante
+          .append("line")
+          .attr(
+            "x1",
+            mouse.x / (mouse.elementWidth / Vars.width) -
+              (3 * Vars.radEventPunto) / 2
+          )
+          .attr("y1", mouse.y / (mouse.elementHeight / Vars.height))
+          .attr(
+            "x2",
+            mouse.x / (mouse.elementWidth / Vars.width) - Vars.radEventPunto / 4
+          )
+          .attr("y2", mouse.y / (mouse.elementHeight / Vars.height))
+          .classed("temp", true)
+          .attr("stroke", "black")
+          .attr("stroke-width", 0.7);
+        geomFlotante
+          .append("line")
+          .attr(
+            "x1",
+            mouse.x / (mouse.elementWidth / Vars.width) +
+              (3 * Vars.radEventPunto) / 2
+          )
+          .attr("y1", mouse.y / (mouse.elementHeight / Vars.height))
+          .attr(
+            "x2",
+            mouse.x / (mouse.elementWidth / Vars.width) + Vars.radEventPunto / 4
+          )
+          .attr("y2", mouse.y / (mouse.elementHeight / Vars.height))
+          .classed("temp", true)
+          .attr("stroke", "black")
+          .attr("stroke-width", 0.7);
+        
+        const PR = getPR();
+        const textoFlotante = `${Number(PR[0]).toFixed(2)}, ${Number(PR[1]).toFixed(2)}`;
+        const anchoChar = 12;
+        const posVert = mouse.y / (mouse.elementHeight / Vars.height) < mouse.elementHeight/20 ? -1: 1;
+        geomFlotante
+          .append("text")
+          .text(textoFlotante)
+          .attr("x", mouse.x / (mouse.elementWidth / Vars.width) + (
+            mouse.x / (mouse.elementWidth / Vars.width) > (mouse.elementWidth - textoFlotante.length * anchoChar / 3) ? - (textoFlotante.length * anchoChar + 5): 5
+          ))
+          .attr("y", mouse.y / (mouse.elementHeight / Vars.height) - (
+            mouse.y / (mouse.elementHeight / Vars.height) < mouse.elementHeight/20 ? -25: 5
+          ))
+          .classed("temp", true)
+          .attr("font-family", "OCR A Std, monospace")
+          .attr("font-size", "20px")
+          .attr("fill", "red");
+      }
+
     }
     
   }, [mouse, Vars, svg]);
