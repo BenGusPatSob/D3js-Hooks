@@ -35,6 +35,7 @@ const DwgPad = forwardRef((data, referencia) => {
     leaveDelay: 10,
     fps: 60,
   });
+  const [GeomTemp, setGeomTemp] = useState([])
   //4. Variables:
   const [height, setHeight] = useState(valorparahijo.height);
   const [width, setWidth] = useState(valorparahijo.width);
@@ -137,7 +138,7 @@ const DwgPad = forwardRef((data, referencia) => {
     setSvg(d3.select(refToSvg.current));
     svg.selectAll("g").remove();
     svg.attr("viewBox", [0, 0, Vars.width, Vars.height]);
-
+    //Escalas x e y:
     let x = d3
       .scaleLinear()
       .domain([
@@ -149,7 +150,6 @@ const DwgPad = forwardRef((data, referencia) => {
               ((Vars.width / 2) * zoomTransform.k)),
       ])
       .range([0, Vars.width]);
-    //console.log("DwgPad_useEffect: x.domain", x.domain());
     let y = d3
       .scaleLinear()
       .domain([
@@ -163,7 +163,8 @@ const DwgPad = forwardRef((data, referencia) => {
           (1 + zoomTransform.y / ((Vars.height / 2) * zoomTransform.k)),
       ])
       .range([Vars.height, 0]);
-    //console.log("DwgPad_useEffect: y.domain", y.domain());
+
+    //The grid (+axes):
     const xAxis = (g, x) =>
       g
         .style("font", "20px OCR A Std, monospace")
@@ -210,23 +211,12 @@ const DwgPad = forwardRef((data, referencia) => {
     const gGrid = svg.append("g");
     gGrid.call(grid, x, y);
 
-    //Geometria Persistida _ vertices:
-    const geomVertex = svg.append("g").attr("fill", "none");
-    geomVertex
-      .selectAll("circle")
-      .data(geomTransf)
-      .join("circle")
-      .attr("cx", (d) => d[0])
-      .attr("cy", (d) => d[1])
-      .attr("r", Vars.radPersPunto)
-      .attr("fill", "green");
-
     const gx = svg.append("g");
     const gy = svg.append("g");
     gx.call(xAxis, x);
     gy.call(yAxis, y);
 
-    //Cdg tracker:
+    //O tracker:
     const cdgLines = svg.append("g");
     cdgLines.exit().remove();
     cdgLines
@@ -255,6 +245,49 @@ const DwgPad = forwardRef((data, referencia) => {
       .attr("fill", "grey")
       .attr("opacity", 0.2);
 
+    //Geometria Persistida _ vertices:
+    const geomVertex = svg.append("g").attr("fill", "none");
+    geomVertex
+      .selectAll("circle")
+      .data(geomTransf)
+      .join("circle")
+      .attr("cx", (d) => d[0])
+      .attr("cy", (d) => d[1])
+      .attr("r", Vars.radPersPunto)
+      .attr("fill", "green");
+
+    //EventTriggers_Puntos
+    const puntosET = svg.append("g").attr("fill", "none");
+    // geomTransf.map((pol) =>
+    //   puntosET
+    //     .selectAll("circle")
+    //     .data(pol)
+    //     .join("circle")
+    //     .attr("cx", (d) => d[0])
+    //     .attr("cy", (d) => d[1])
+    //     .attr("r", Vars.radEventPunto)
+    //     .attr("fill", "blue")
+    //     .attr("opacity", 0)
+    //     .on("mouseover", function () {
+    //       d3.select(this).attr("opacity", 1);
+    //     })
+    //     .on("mouseout", function () {
+    //       d3.select(this).attr("opacity", 0);
+    //     })
+    // );
+    puntosET
+      .selectAll("circle")
+      .data(geomTransf)
+      .join("circle")
+      .attr("cx", (d) => d[0])
+      .attr("cy", (d) => d[1])
+      .attr("r", Vars.radEventPunto)
+      .attr("fill", "blue")
+      .attr("opacity", 0)
+      .on("mouseover", function() {d3.select(this).attr("opacity", 1)})
+      .on("mouseout", function() {d3.select(this).attr("opacity", 0)});
+
+    //Configuración del zoom
     const zoom = d3.zoom().scaleExtent([0.1, 50]).on("zoom", zoomed);
     svg.call(zoom);
     // svg.call(zoom).call(zoom.transform, d3.zoomIdentity);
@@ -266,7 +299,9 @@ const DwgPad = forwardRef((data, referencia) => {
         y: transform.y,
       });
     }
-    //return actualizaPadreDesdeHijo();
+
+    //Lo siguiente está en observación...
+    return actualizaPadreDesdeHijo();
   }, [Geom, geomTransf, zoomTransform, Vars, refToSvg]);
 
   const getPR = () => {
