@@ -8,8 +8,6 @@ import React, {
 } from "react";
 import * as d3 from "d3";
 import useMouse from "@react-hook/mouse-position";
-import {intersection as inters} from './Helpers';
-import { zoom } from "d3";
 
 //https://www.npmjs.com/package/@react-hook/mouse-position
 //github.com/jaredLunde/react-hook/tree/master/packages/mouse-position#readme
@@ -22,9 +20,17 @@ const DwgPad = forwardRef((data, referencia) => {
   //3. Establecemos los hooks:
   const [svg, setSvg] = useState(() => d3.select(refToSvg.current));
   const [Geom, setGeom] = useState(valorparahijo.Geom);
+  const [GeomTemp, setGeomTemp] = useState([]);
   const [zoomTransform, setZoomTransform] = useState( valorparahijo.zoomTransform );
   const [geomTransf, setGeomTransf] = useState(() =>
     Geom.map((d) => [
+      d[0] * zoomTransform.k + zoomTransform.x,
+      d[1] * zoomTransform.k + zoomTransform.y,
+      d[2],
+    ])
+  );
+  const [geomTempTransf, setGeomTempTransf] = useState(() =>
+    GeomTemp.map((d) => [
       d[0] * zoomTransform.k + zoomTransform.x,
       d[1] * zoomTransform.k + zoomTransform.y,
       d[2],
@@ -35,7 +41,7 @@ const DwgPad = forwardRef((data, referencia) => {
     leaveDelay: 10,
     fps: 60,
   });
-  const [GeomTemp, setGeomTemp] = useState([])
+  const [puntoOsnap, setPuntoOsnap] = useState([]);
   //4. Variables:
   const [height, setHeight] = useState(valorparahijo.height);
   const [width, setWidth] = useState(valorparahijo.width);
@@ -43,7 +49,6 @@ const DwgPad = forwardRef((data, referencia) => {
   const Bbox_Xsup = 500;
   const Bbox_Yinf = -500;
   const Bbox_Ysup = 500;
-  const [puntoFlotante, setPuntoFlotante] = useState([]);
   const [tolGeom, setTolGeom] = useState(0.001);
   const [radPersPunto, setRadPersPunto] = useState(10);
   const [radEventPunto, setRadEventPunto] = useState(20);
@@ -63,17 +68,14 @@ const DwgPad = forwardRef((data, referencia) => {
 
   //5. Actualización del hijo ordenada desde el padre (imperativa)
   useImperativeHandle(referencia, () => {
-    //console.log("DwgPad: Mandando actualizar datos (useImperativeHandle)");
     return { actualizaDatos };
   });
   const actualizaDatos = (datosNuevos) => {
-    // console.log("DwgPad_actualizaDatos: datosNuevos", datosNuevos);
     actualizaGeom(datosNuevos.Geom);
     actualizaHeight(datosNuevos.height);
     actualizaWidth(datosNuevos.width);
   };
   const actualizaGeom = (geomNueva) => {
-    // console.log("DwgPad_actualizaGeom: geomNueva", {...geomNueva});
     setGeom(geomNueva);
   };
   const actualizaHeight = (heightNueva) => {
@@ -82,7 +84,7 @@ const DwgPad = forwardRef((data, referencia) => {
   const actualizaWidth = (widthNueva) => {
     setWidth(widthNueva);
   };
-  //6. Actualizacion del padre ordenada desde el hijo
+  
   const actualizaPadreDesdeHijo = () => {
     let objetoActualizado = {
       width,
@@ -90,47 +92,35 @@ const DwgPad = forwardRef((data, referencia) => {
       zoomTransform,
       Geom,
     };
-    // console.log("DwgPad_actualizaPadreDesdeHijo: objetoActualizado", objetoActualizado);
     actualizaPadre(objetoActualizado);
   };
   //7. Gestores de eventos:
 
   ////7.1 Gestor de los clicks:
   const handleClick = () => {
-    const AA = [
-      (zoomTransform.x * mouse.elementWidth) / Vars.width,
-      (zoomTransform.y * mouse.elementHeight) / Vars.height,
-    ];
-    const BB = [
-      (zoomTransform.x * mouse.elementWidth) / Vars.width +
-        mouse.elementWidth * zoomTransform.k,
-      (zoomTransform.y * mouse.elementHeight) / Vars.height,
-    ];
-    const DD = [
-      (zoomTransform.x * mouse.elementWidth) / Vars.width,
-      (zoomTransform.y * mouse.elementHeight) / Vars.height +
-        mouse.elementHeight * zoomTransform.k,
-    ];
-    const OO = [(AA[0] + BB[0]) / 2, (AA[1] + DD[1]) / 2];
-    const P = [mouse.x, mouse.y];
-    const PR = [
-      (Vars.Bbox_Xinf * (P[0] - OO[0])) / (AA[0] - OO[0]),
-      (Vars.Bbox_Ysup *
-        (mouse.elementHeight / mouse.elementWidth) *
-        (P[1] - OO[1])) /
-        (AA[1] - OO[1]),
-      1,
-    ];
-    setGeom([...Geom, PR]);
-    actualizaDatos({
-      width: Vars.width,
-      height: Vars.height,
-      zoomTransform,
-      Geom: [...Geom, PR],
-    });
+    const PR = puntoOsnap.length === 0? getPR(): getPRfromP([puntoOsnap[0] * mouse.elementWidth / Vars.width, puntoOsnap[1] * mouse.elementHeight / Vars.height, 1], mouse.elementWidth, mouse.elementHeight);
+    if(GeomTemp.length > 0 && Math.abs(PR[0] - GeomTemp[0][0]) <= tolGeom && Math.abs(PR[1] - GeomTemp[0][1]) <= tolGeom ){
+      setGeom([...Geom, [...GeomTemp, PR]]);
+      setGeomTemp([]);
+      // actualizaDatos({
+      //   width: Vars.width,
+      //   height: Vars.height,
+      //   zoomTransform,
+      //   Geom: [...Geom],
+      // });
+    } else {
+      setGeomTemp([...GeomTemp, PR]);
+    }
   };
-  ////7.2. Actualizador del zoom transform: movido dentro del useEffect...
-  ////7.3. Genera geometria transformada por zoomTransform: movido a useEffect
+
+  const anclaPuntoOsnap = (punto) => {
+    setPuntoOsnap(punto);
+  };
+
+  const desanclaPuntoOsnap = () => {
+    setPuntoOsnap([]);
+  };
+  
 
   //8. El bloque de dibujo (d3js):
   useLayoutEffect(() => {
@@ -245,47 +235,87 @@ const DwgPad = forwardRef((data, referencia) => {
       .attr("fill", "grey")
       .attr("opacity", 0.2);
 
+    const geomPers = svg.append("g").attr("fill", "none");
     //Geometria Persistida _ vertices:
-    const geomVertex = svg.append("g").attr("fill", "none");
-    geomVertex
-      .selectAll("circle")
-      .data(geomTransf)
-      .join("circle")
-      .attr("cx", (d) => d[0])
-      .attr("cy", (d) => d[1])
-      .attr("r", Vars.radPersPunto)
-      .attr("fill", "green");
+    geomTransf.map((pol) =>
+      pol.map((punto) =>
+        geomPers
+          .append("circle")
+          .attr("cx", punto[0])
+          .attr("cy", punto[1])
+          .attr("r", Vars.radPersPunto / 2)
+          .attr("fill", "green")
+      )
+    );
+    geomTempTransf.map((punto) =>
+      geomPers
+        .append("circle")
+        .attr("cx", punto[0])
+        .attr("cy", punto[1])
+        .attr("r", Vars.radPersPunto)
+        .attr("fill", "blue")
+    );
+    //Geometria Persistida _ segmentos:
+    geomTransf.map((pol) =>
+      pol.map((punto, i) =>
+        geomPers
+          .append("line")
+          .attr("x1", function() {if(i < pol.length - 1) return punto[0];})
+          .attr("y1", function() {if(i < pol.length - 1) return punto[1];})
+          .attr("x2", function() {if(i < pol.length - 1) return pol[i + 1][0];})
+          .attr("y2", function() {if(i < pol.length - 1) return pol[i + 1][1];})
+          .attr("stroke", "green")
+          .attr("stroke-width", 2)
+      )
+    );
+    geomTempTransf.map((punto, i) =>
+        geomPers
+          .append("line")
+          .attr("x1", function() {if(i < geomTempTransf.length - 1) return punto[0];})
+          .attr("y1", function() {if(i < geomTempTransf.length - 1) return punto[1];})
+          .attr("x2", function() {if(i < geomTempTransf.length - 1) return geomTempTransf[i + 1][0];})
+          .attr("y2", function() {if(i < geomTempTransf.length - 1) return geomTempTransf[i + 1][1];})
+          .attr("stroke", "blue")
+          .attr("stroke-width", 2)
+    );
 
     //EventTriggers_Puntos
-    const puntosET = svg.append("g").attr("fill", "none");
-    // geomTransf.map((pol) =>
-    //   puntosET
-    //     .selectAll("circle")
-    //     .data(pol)
-    //     .join("circle")
-    //     .attr("cx", (d) => d[0])
-    //     .attr("cy", (d) => d[1])
-    //     .attr("r", Vars.radEventPunto)
-    //     .attr("fill", "blue")
-    //     .attr("opacity", 0)
-    //     .on("mouseover", function () {
-    //       d3.select(this).attr("opacity", 1);
-    //     })
-    //     .on("mouseout", function () {
-    //       d3.select(this).attr("opacity", 0);
-    //     })
-    // );
-    puntosET
-      .selectAll("circle")
-      .data(geomTransf)
-      .join("circle")
-      .attr("cx", (d) => d[0])
-      .attr("cy", (d) => d[1])
-      .attr("r", Vars.radEventPunto)
-      .attr("fill", "blue")
-      .attr("opacity", 0)
-      .on("mouseover", function() {d3.select(this).attr("opacity", 1)})
-      .on("mouseout", function() {d3.select(this).attr("opacity", 0)});
+    geomTransf.map((pol) =>
+      pol.map((punto) =>
+        geomPers
+          .append("circle")
+          .attr("cx", punto[0])
+          .attr("cy", punto[1])
+          .attr("r", Vars.radEventPunto)
+          .attr("fill", "blue")
+          .attr("opacity", 0)
+          .on("mouseover", function () {
+            d3.select(this).attr("opacity", 1);
+            anclaPuntoOsnap(punto);
+          })
+          .on("mouseout", function () {
+            d3.select(this).attr("opacity", 0);
+            desanclaPuntoOsnap();
+          })
+      )
+    );
+    geomTempTransf.map((punto) =>
+      geomPers
+        .append("circle")
+        .attr("cx", punto[0])
+        .attr("cy", punto[1])
+        .attr("r", Vars.radEventPunto)
+        .attr("fill", "blue")
+        .attr("opacity", 0)
+        .on("mouseover", function () {
+          d3.select(this).attr("opacity", 1);
+          anclaPuntoOsnap(punto);
+        })
+        .on("mouseout", function () {
+          d3.select(this).attr("opacity", 0);
+          desanclaPuntoOsnap();
+        })
+    );
 
     //Configuración del zoom
     const zoom = d3.zoom().scaleExtent([0.1, 50]).on("zoom", zoomed);
@@ -302,8 +332,10 @@ const DwgPad = forwardRef((data, referencia) => {
 
     //Lo siguiente está en observación...
     return actualizaPadreDesdeHijo();
-  }, [Geom, geomTransf, zoomTransform, Vars, refToSvg]);
+  }, [Geom, geomTransf, geomTempTransf, zoomTransform, Vars, refToSvg]);
 
+
+  //Dada la posición del mouse y un estado del ZoomTransform, obtener coord reales de un punto
   const getPR = () => {
     const AA = [
       (zoomTransform.x * mouse.elementWidth) / Vars.width,
@@ -331,19 +363,82 @@ const DwgPad = forwardRef((data, referencia) => {
     ];
     return PR;
   }
-
-  useEffect(() => {
-    if (mouse.isOver) {
-      setPuntoFlotante(getPR());
-    }
-  }, [mouse, zoomTransform, Vars]);
+  //Dado un las coordenadas reales de un punto, devuelve su representación en pantalla
+  const getPRfromP = (P, elemWidth, elemHeight) => {
+    const AA = [
+      (zoomTransform.x * elemWidth) / Vars.width,
+      (zoomTransform.y * elemHeight) / Vars.height,
+    ];
+    const BB = [
+      (zoomTransform.x * elemWidth) / Vars.width + elemWidth * zoomTransform.k,
+      (zoomTransform.y * elemHeight) / Vars.height,
+    ];
+    const DD = [
+      (zoomTransform.x * elemWidth) / Vars.width,
+      (zoomTransform.y * elemHeight) / Vars.height +
+        elemHeight * zoomTransform.k,
+    ];
+    const OO = [(AA[0] + BB[0]) / 2, (AA[1] + DD[1]) / 2];
+    const PR = [
+      (Vars.Bbox_Xinf * (P[0] - OO[0])) / (AA[0] - OO[0]),
+      (Vars.Bbox_Ysup * (elemHeight / elemWidth) * (P[1] - OO[1])) /
+        (AA[1] - OO[1]),
+      1,
+    ];
+    return PR;
+  };
+  // const getPRfromP = (P, elemWidth, elemHeight) => {
+  //   const AA = [
+  //     (zoomTransform.x * mouse.elementWidth) / Vars.width,
+  //     (zoomTransform.y * mouse.elementHeight) / Vars.height,
+  //   ];
+  //   const BB = [
+  //     (zoomTransform.x * mouse.elementWidth) / Vars.width +
+  //       mouse.elementWidth * zoomTransform.k,
+  //     (zoomTransform.y * mouse.elementHeight) / Vars.height,
+  //   ];
+  //   const DD = [
+  //     (zoomTransform.x * mouse.elementWidth) / Vars.width,
+  //     (zoomTransform.y * mouse.elementHeight) / Vars.height +
+  //       mouse.elementHeight * zoomTransform.k,
+  //   ];
+  //   const OO = [(AA[0] + BB[0]) / 2, (AA[1] + DD[1]) / 2];
+  //   console.log("zoomTransform", zoomTransform);
+  //   console.log("AA BB DD OO", AA, BB, DD, OO);
+  //   console.log("mouse", mouse);
+  //   const PR = [
+  //     (Vars.Bbox_Xinf * (P[0] - OO[0])) / (AA[0] - OO[0]),
+  //     (Vars.Bbox_Ysup *
+  //       (mouse.elementHeight / mouse.elementWidth) *
+  //       (P[1] - OO[1])) /
+  //       (AA[1] - OO[1]),
+  //     1,
+  //   ];
+  //   return PR;
+  // };
+//Dado un punto con coordenadas reales, devuelve la representación en pantalla
+  const getP = (PR) => {
+    return [
+      zoomTransform.x +
+        (Vars.width / 2) * zoomTransform.k -
+        ((Vars.width / 2) * zoomTransform.k * PR[0]) / Vars.Bbox_Xinf,
+      zoomTransform.y +
+        (Vars.width / 2) * zoomTransform.k -
+        ((Vars.width / 2) * zoomTransform.k * PR[1]) / Vars.Bbox_Ysup -
+        ((Vars.width - Vars.height) * zoomTransform.k) / 2,
+      PR[2],
+    ];
+  }
 
   useLayoutEffect(() => {
+    
     svg.selectAll(".temp").remove();
     if (mouse.isOver){
       if (mouse.x != null) {
+        const PR = puntoOsnap.length === 0? getPR(): getPRfromP([puntoOsnap[0] * mouse.elementWidth / Vars.width, puntoOsnap[1] * mouse.elementHeight / Vars.height, 1], mouse.elementWidth, mouse.elementHeight);
         const geomFlotante = svg.append("g");
         geomFlotante.exit().remove();
+        //Puntero:
         geomFlotante
           .append("circle")
           .attr("cx", mouse.x / (mouse.elementWidth / Vars.width))
@@ -417,16 +512,14 @@ const DwgPad = forwardRef((data, referencia) => {
           .classed("temp", true)
           .attr("stroke", "black")
           .attr("stroke-width", 0.7);
-        
-        const PR = getPR();
+        //Texto Puntero
         const textoFlotante = `${Number(PR[0]).toFixed(2)}, ${Number(PR[1]).toFixed(2)}`;
         const anchoChar = 12;
-        const posVert = mouse.y / (mouse.elementHeight / Vars.height) < mouse.elementHeight/20 ? -1: 1;
         geomFlotante
           .append("text")
           .text(textoFlotante)
           .attr("x", mouse.x / (mouse.elementWidth / Vars.width) + (
-            mouse.x / (mouse.elementWidth / Vars.width) > (mouse.elementWidth - textoFlotante.length * anchoChar / 3) ? - (textoFlotante.length * anchoChar + 5): 5
+            mouse.x / (mouse.elementWidth / Vars.width) > (mouse.elementWidth - textoFlotante.length * anchoChar) * 4 / 5 ? - (textoFlotante.length * anchoChar + 5): 5
           ))
           .attr("y", mouse.y / (mouse.elementHeight / Vars.height) - (
             mouse.y / (mouse.elementHeight / Vars.height) < mouse.elementHeight/20 ? -25: 5
@@ -435,31 +528,79 @@ const DwgPad = forwardRef((data, referencia) => {
           .attr("font-family", "OCR A Std, monospace")
           .attr("font-size", "20px")
           .attr("fill", "red");
+        //Linea flotante:
+        if(geomTempTransf.length > 0){
+          const puntoAncla = geomTempTransf[geomTempTransf.length - 1];
+          const vectorFlotante = [
+                                  mouse.x / (mouse.elementWidth / Vars.width) - geomTempTransf[geomTempTransf.length - 1][0],
+                                  mouse.y / (mouse.elementHeight / Vars.height) - geomTempTransf[geomTempTransf.length - 1][1]
+                                 ];
+          const mod = Math.sqrt(vectorFlotante[0]*vectorFlotante[0] + vectorFlotante[1]*vectorFlotante[1]);
+          if(mod>0){
+            geomFlotante
+              .append("line")
+              .attr("x1", puntoAncla[0] )
+              .attr("y1", puntoAncla[1] )
+              .attr("x2", puntoAncla[0] + (mod - Vars.radEventPunto / 4) * vectorFlotante[0] / mod)
+              .attr("y2", puntoAncla[1] + (mod - Vars.radEventPunto / 4) * vectorFlotante[1] / mod )
+              .classed("temp", true)
+              .attr("stroke", "black")
+              .attr("stroke-width", 0.7);
+          }
+        }
       }
 
     }
-    
-  }, [mouse, Vars, svg]);
+  }, [mouse, Vars, svg, geomTempTransf, puntoOsnap, getPR]);
 
   //9. GeometriaTranformada
   useLayoutEffect(() => {
     ////7.3. Genera geometria transformada por zoomTransform:
     const transformaGeometria = () => {
       setGeomTransf(
-        Geom.map((d) => [
+        Geom.map( (pol) => pol.map((punto) => [
           zoomTransform.x +
             (Vars.width / 2) * zoomTransform.k -
-            ((Vars.width / 2) * zoomTransform.k * d[0]) / Vars.Bbox_Xinf,
+            ((Vars.width / 2) * zoomTransform.k * punto[0]) / Vars.Bbox_Xinf,
           zoomTransform.y +
             (Vars.width / 2) * zoomTransform.k -
-            ((Vars.width / 2) * zoomTransform.k * d[1]) / Vars.Bbox_Ysup -
+            ((Vars.width / 2) * zoomTransform.k * punto[1]) / Vars.Bbox_Ysup -
             ((Vars.width - Vars.height) * zoomTransform.k) / 2,
-          d[2],
-        ])
+          punto[2],
+        ]))      
+      );
+      setGeomTempTransf(
+        GeomTemp.map((punto) => [
+            zoomTransform.x +
+              (Vars.width / 2) * zoomTransform.k -
+              ((Vars.width / 2) * zoomTransform.k * punto[0]) / Vars.Bbox_Xinf,
+            zoomTransform.y +
+              (Vars.width / 2) * zoomTransform.k -
+              ((Vars.width / 2) * zoomTransform.k * punto[1]) / Vars.Bbox_Ysup -
+              ((Vars.width - Vars.height) * zoomTransform.k) / 2,
+            punto[2],
+          ]
+        )
       );
     };
     return transformaGeometria();
-  }, [zoomTransform, Geom, Vars]);
+  }, [zoomTransform, Geom, GeomTemp, Vars]);
+
+  useEffect(() => {
+    setTolGeom(tolGeom);
+  }, [tolGeom]);
+
+  useEffect(() => {
+    setRadPersPunto(radPersPunto);
+  }, [radPersPunto]);
+
+  useEffect(() => {
+    setRadEventPunto(radEventPunto);
+  }, [radEventPunto]);
+
+  useEffect(() => {
+    setEspEventoSegmento(espEventSegmento);
+  }, [espEventSegmento]);
 
   return <svg ref={refToSvg} onChange={actualizaPadre} onClick={handleClick} />;
 });
