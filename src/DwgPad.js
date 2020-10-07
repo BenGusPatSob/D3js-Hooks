@@ -120,10 +120,28 @@ const DwgPad = forwardRef((data, referencia) => {
   const desanclaPuntoOsnap = () => {
     setPuntoOsnap([]);
   };
+
+  const getPolArea = (pol) => {
+    //Solido: area>0; Hueco: area<0
+    let area = 0;
+    let d = pol.slice(0, pol.length - 1);
+    d.map(
+      (punto, i) =>
+        (area += pol[i][0] * pol[i + 1][1] - pol[i + 1][0] * pol[i][1])
+    );
+    return area / 2;
+  };
   
 
   //8. El bloque de dibujo (d3js):
   useLayoutEffect(() => {
+
+    const lineFactory = d3.line()
+                                .x(function(d) { return d[0]; })
+                                .y(function(d) { return d[1]; })
+                                .curve(d3.curveLinear);
+
+
     const k = Vars.height / Vars.width;
     setSvg(d3.select(refToSvg.current));
     svg.selectAll("g").remove();
@@ -316,6 +334,36 @@ const DwgPad = forwardRef((data, referencia) => {
           desanclaPuntoOsnap();
         })
     );
+    //EventTriggers_Segmentos:
+    // geomTransf.map((pol) => pol.map( (punto, i) => 
+    //         {
+    //           const isSolid = getPolArea(pol) > 0 ? true : false;
+    //           if(i<pol.length - 1){
+    //             const direcc = [
+    //               (pol[i + 1][0] - pol[i][0]),
+    //               (pol[i + 1][1] - pol[i][1]),
+    //             ];
+    //             const mod = Math.sqrt( direcc[0] * direcc[0] + direcc[1] * direcc[1] );
+    //             const segmentos = [
+    //               [punto[0] - direcc[1] * Vars.espEventSegmento / mod, punto[1] + direcc[0] * Vars.espEventSegmento / mod],
+    //               [punto[0] - direcc[1] * Vars.espEventSegmento / mod + direcc[0], punto[1] + direcc[0] * Vars.espEventSegmento / mod + direcc[1]],
+    //               [pol[i + 1][0] + direcc[1] * Vars.espEventSegmento * 2 / mod, pol[i+1][1] - direcc[0] * Vars.espEventSegmento * 2 / mod],
+    //               [pol[i + 1][0] + direcc[1] * Vars.espEventSegmento * 2 / mod - direcc[0], pol[i+1][1] - direcc[0] * Vars.espEventSegmento * 2 / mod - direcc[1]],
+    //               [punto[0] - direcc[1] * Vars.espEventSegmento / mod, punto[1] + direcc[0] * Vars.espEventSegmento / mod]
+    //             ];
+    //             console.log("puntoA, puntoB", punto, pol[i + 1]);
+    //             console.log("segmentos", segmentos);
+    //             geomPers
+    //               .append("path")
+    //               .attr("d", lineFactory(segmentos))
+    //               .on("mouseover", function () { d3.select(this).attr("opacity", 1) })
+    //               .on("mouseout", function () { d3.select(this).attr("opacity", 0) });
+    //               // .attr("fill", isSolid ? "#eee" : "green")
+    //               // .attr("opacity", isSolid ? 1 : 0.2);
+    //           }
+    //         }
+    //                                 )
+    // );
 
     //Configuración del zoom
     const zoom = d3.zoom().scaleExtent([0.1, 50]).on("zoom", zoomed);
@@ -328,12 +376,11 @@ const DwgPad = forwardRef((data, referencia) => {
         x: transform.x,
         y: transform.y,
       });
-    }
+    }    
 
     //Lo siguiente está en observación...
     return actualizaPadreDesdeHijo();
   }, [Geom, geomTransf, geomTempTransf, zoomTransform, Vars, refToSvg]);
-
 
   //Dada la posición del mouse y un estado del ZoomTransform, obtener coord reales de un punto
   const getPR = () => {
@@ -387,35 +434,7 @@ const DwgPad = forwardRef((data, referencia) => {
     ];
     return PR;
   };
-  // const getPRfromP = (P, elemWidth, elemHeight) => {
-  //   const AA = [
-  //     (zoomTransform.x * mouse.elementWidth) / Vars.width,
-  //     (zoomTransform.y * mouse.elementHeight) / Vars.height,
-  //   ];
-  //   const BB = [
-  //     (zoomTransform.x * mouse.elementWidth) / Vars.width +
-  //       mouse.elementWidth * zoomTransform.k,
-  //     (zoomTransform.y * mouse.elementHeight) / Vars.height,
-  //   ];
-  //   const DD = [
-  //     (zoomTransform.x * mouse.elementWidth) / Vars.width,
-  //     (zoomTransform.y * mouse.elementHeight) / Vars.height +
-  //       mouse.elementHeight * zoomTransform.k,
-  //   ];
-  //   const OO = [(AA[0] + BB[0]) / 2, (AA[1] + DD[1]) / 2];
-  //   console.log("zoomTransform", zoomTransform);
-  //   console.log("AA BB DD OO", AA, BB, DD, OO);
-  //   console.log("mouse", mouse);
-  //   const PR = [
-  //     (Vars.Bbox_Xinf * (P[0] - OO[0])) / (AA[0] - OO[0]),
-  //     (Vars.Bbox_Ysup *
-  //       (mouse.elementHeight / mouse.elementWidth) *
-  //       (P[1] - OO[1])) /
-  //       (AA[1] - OO[1]),
-  //     1,
-  //   ];
-  //   return PR;
-  // };
+
 //Dado un punto con coordenadas reales, devuelve la representación en pantalla
   const getP = (PR) => {
     return [
