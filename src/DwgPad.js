@@ -17,8 +17,10 @@ const DwgPad = forwardRef((data, referencia) => {
   const { valorparahijo, actualizaPadre } = data.data;
   //2. Creamos referencia al svg (d3js):
   const refToSvg = useRef();
+  const refToCanvas = useRef();
   //3. Establecemos los hooks:
   const [svg, setSvg] = useState(() => d3.select(refToSvg.current));
+  // const [canvas, setCanvas] = useState(() => d3.select(refToCanvas.current));
   const [Geom, setGeom] = useState(valorparahijo.Geom);
   const [GeomTemp, setGeomTemp] = useState([]);
   const [zoomTransform, setZoomTransform] = useState( valorparahijo.zoomTransform );
@@ -52,7 +54,7 @@ const DwgPad = forwardRef((data, referencia) => {
   const [tolGeom, setTolGeom] = useState(0.001);
   const [radPersPunto, setRadPersPunto] = useState(10);
   const [radEventPunto, setRadEventPunto] = useState(20);
-  const [espEventSegmento, setEspEventoSegmento] = useState(20);
+  const [espEventSegmento, setEspEventoSegmento] = useState(5);
   const [Vars, setVars] = useState({
     height,
     width,
@@ -102,6 +104,7 @@ const DwgPad = forwardRef((data, referencia) => {
     if(GeomTemp.length > 0 && Math.abs(PR[0] - GeomTemp[0][0]) <= tolGeom && Math.abs(PR[1] - GeomTemp[0][1]) <= tolGeom ){
       setGeom([...Geom, [...GeomTemp, PR]]);
       setGeomTemp([]);
+      desanclaPuntoOsnap();
       // actualizaDatos({
       //   width: Vars.width,
       //   height: Vars.height,
@@ -135,17 +138,22 @@ const DwgPad = forwardRef((data, referencia) => {
 
   //8. El bloque de dibujo (d3js):
   useLayoutEffect(() => {
-
-    const lineFactory = d3.line()
-                                .x(function(d) { return d[0]; })
-                                .y(function(d) { return d[1]; })
-                                .curve(d3.curveLinear);
-
+    const lineFactory = d3
+      .line()
+      .x(function (d) {
+        return d[0];
+      })
+      .y(function (d) {
+        return d[1];
+      })
+      .curve(d3.curveLinear);
 
     const k = Vars.height / Vars.width;
     setSvg(d3.select(refToSvg.current));
     svg.selectAll("g").remove();
     svg.attr("viewBox", [0, 0, Vars.width, Vars.height]);
+    // setCanvas(d3.select(refToCanvas.current));
+    // canvas.attr("width", Vars.width).attr("height", Vars.height).attr("transform", 'translate(0, ${-Vars.height})');
     //Escalas x e y:
     let x = d3
       .scaleLinear()
@@ -254,6 +262,7 @@ const DwgPad = forwardRef((data, referencia) => {
       .attr("opacity", 0.2);
 
     const geomPers = svg.append("g").attr("fill", "none");
+    const geomPersCnavas = 
     //Geometria Persistida _ vertices:
     geomTransf.map((pol) =>
       pol.map((punto) =>
@@ -278,25 +287,61 @@ const DwgPad = forwardRef((data, referencia) => {
       pol.map((punto, i) =>
         geomPers
           .append("line")
-          .attr("x1", function() {if(i < pol.length - 1) return punto[0];})
-          .attr("y1", function() {if(i < pol.length - 1) return punto[1];})
-          .attr("x2", function() {if(i < pol.length - 1) return pol[i + 1][0];})
-          .attr("y2", function() {if(i < pol.length - 1) return pol[i + 1][1];})
+          .attr("x1", function () { if (i < pol.length - 1) return punto[0]; })
+          .attr("y1", function () { if (i < pol.length - 1) return punto[1]; })
+          .attr("x2", function () { if (i < pol.length - 1) return pol[i + 1][0]; })
+          .attr("y2", function () { if (i < pol.length - 1) return pol[i + 1][1]; })
           .attr("stroke", "green")
           .attr("stroke-width", 2)
       )
     );
     geomTempTransf.map((punto, i) =>
-        geomPers
-          .append("line")
-          .attr("x1", function() {if(i < geomTempTransf.length - 1) return punto[0];})
-          .attr("y1", function() {if(i < geomTempTransf.length - 1) return punto[1];})
-          .attr("x2", function() {if(i < geomTempTransf.length - 1) return geomTempTransf[i + 1][0];})
-          .attr("y2", function() {if(i < geomTempTransf.length - 1) return geomTempTransf[i + 1][1];})
-          .attr("stroke", "blue")
-          .attr("stroke-width", 2)
+      geomPers
+        .append("line")
+        .attr("x1", function () { if (i < geomTempTransf.length - 1) return punto[0]; })
+        .attr("y1", function () { if (i < geomTempTransf.length - 1) return punto[1]; })
+        .attr("x2", function () { if (i < geomTempTransf.length - 1) return geomTempTransf[i + 1][0]; })
+        .attr("y2", function () { if (i < geomTempTransf.length - 1) return geomTempTransf[i + 1][1]; })
+        .attr("stroke", "blue")
+        .attr("stroke-width", 2)
     );
 
+    //EventTriggers_Segmentos:
+    if (geomTransf.length > 0) {
+      geomTransf.map((pol) =>
+        pol.map((punto, i) => {
+          const isSolid = getPolArea(pol) > 0 ? true : false;
+          if (i < pol.length - 1) {
+            const direcc = [ pol[i + 1][0] - pol[i][0],  pol[i + 1][1] - pol[i][1] ];
+            const mod = Math.sqrt( direcc[0] * direcc[0] + direcc[1] * direcc[1] );
+            const segmentos = [
+              [ punto[0] - (direcc[1] * Vars.espEventSegmento) / mod, punto[1] + (direcc[0] * Vars.espEventSegmento) / mod ],
+              [ punto[0] - (direcc[1] * Vars.espEventSegmento) / mod + direcc[0], punto[1] + (direcc[0] * Vars.espEventSegmento) / mod + direcc[1] ],
+              [ pol[i + 1][0] + (direcc[1] * Vars.espEventSegmento * 2) / mod, pol[i + 1][1] - (direcc[0] * Vars.espEventSegmento * 2) / mod ],
+              [ pol[i + 1][0] + (direcc[1] * Vars.espEventSegmento * 2) / mod - direcc[0], pol[i + 1][1] - (direcc[0] * Vars.espEventSegmento * 2) / mod - direcc[1] ],
+              [ punto[0] - (direcc[1] * Vars.espEventSegmento) / mod, punto[1] + (direcc[0] * Vars.espEventSegmento) / mod ],
+            ];
+            geomPers
+              .append("path")
+              .attr("d", lineFactory(segmentos))
+              .attr("fill", "blue")
+              .attr("opacity", 0)
+              .on("mouseover", function () { d3.select(this).attr("opacity", 1); })
+              .on("mouseout", function () { d3.select(this).attr("opacity", 0); });
+          }
+        })
+      );
+      geomTransf.map((pol) => {
+
+        const context = document;
+        localStorage.setItem('contexto', context);
+        localStorage.getItem('contexto');
+        // localStorage.clear();
+      });
+    };
+    //EventTriggers_Delaunay:
+    // const context = canvas.node().getContext("2d");
+    // console.log("context", context);
     //EventTriggers_Puntos
     geomTransf.map((pol) =>
       pol.map((punto) =>
@@ -334,36 +379,6 @@ const DwgPad = forwardRef((data, referencia) => {
           desanclaPuntoOsnap();
         })
     );
-    //EventTriggers_Segmentos:
-    // geomTransf.map((pol) => pol.map( (punto, i) => 
-    //         {
-    //           const isSolid = getPolArea(pol) > 0 ? true : false;
-    //           if(i<pol.length - 1){
-    //             const direcc = [
-    //               (pol[i + 1][0] - pol[i][0]),
-    //               (pol[i + 1][1] - pol[i][1]),
-    //             ];
-    //             const mod = Math.sqrt( direcc[0] * direcc[0] + direcc[1] * direcc[1] );
-    //             const segmentos = [
-    //               [punto[0] - direcc[1] * Vars.espEventSegmento / mod, punto[1] + direcc[0] * Vars.espEventSegmento / mod],
-    //               [punto[0] - direcc[1] * Vars.espEventSegmento / mod + direcc[0], punto[1] + direcc[0] * Vars.espEventSegmento / mod + direcc[1]],
-    //               [pol[i + 1][0] + direcc[1] * Vars.espEventSegmento * 2 / mod, pol[i+1][1] - direcc[0] * Vars.espEventSegmento * 2 / mod],
-    //               [pol[i + 1][0] + direcc[1] * Vars.espEventSegmento * 2 / mod - direcc[0], pol[i+1][1] - direcc[0] * Vars.espEventSegmento * 2 / mod - direcc[1]],
-    //               [punto[0] - direcc[1] * Vars.espEventSegmento / mod, punto[1] + direcc[0] * Vars.espEventSegmento / mod]
-    //             ];
-    //             console.log("puntoA, puntoB", punto, pol[i + 1]);
-    //             console.log("segmentos", segmentos);
-    //             geomPers
-    //               .append("path")
-    //               .attr("d", lineFactory(segmentos))
-    //               .on("mouseover", function () { d3.select(this).attr("opacity", 1) })
-    //               .on("mouseout", function () { d3.select(this).attr("opacity", 0) });
-    //               // .attr("fill", isSolid ? "#eee" : "green")
-    //               // .attr("opacity", isSolid ? 1 : 0.2);
-    //           }
-    //         }
-    //                                 )
-    // );
 
     //Configuración del zoom
     const zoom = d3.zoom().scaleExtent([0.1, 50]).on("zoom", zoomed);
@@ -376,11 +391,11 @@ const DwgPad = forwardRef((data, referencia) => {
         x: transform.x,
         y: transform.y,
       });
-    }    
+    }
 
     //Lo siguiente está en observación...
     return actualizaPadreDesdeHijo();
-  }, [Geom, geomTransf, geomTempTransf, zoomTransform, Vars, refToSvg]);
+  }, [Geom, geomTransf, geomTempTransf, zoomTransform, Vars, refToSvg, refToCanvas]);
 
   //Dada la posición del mouse y un estado del ZoomTransform, obtener coord reales de un punto
   const getPR = () => {
@@ -410,6 +425,7 @@ const DwgPad = forwardRef((data, referencia) => {
     ];
     return PR;
   }
+  
   //Dado un las coordenadas reales de un punto, devuelve su representación en pantalla
   const getPRfromP = (P, elemWidth, elemHeight) => {
     const AA = [
@@ -621,7 +637,12 @@ const DwgPad = forwardRef((data, referencia) => {
     setEspEventoSegmento(espEventSegmento);
   }, [espEventSegmento]);
 
-  return <svg ref={refToSvg} onChange={actualizaPadre} onClick={handleClick} />;
+  return (
+    <div>
+      <svg ref={refToSvg} onChange={actualizaPadre} onClick={handleClick} />
+      {/* <canvas ref={refToCanvas} /> */}
+    </div>
+  );
 });
 
 export default DwgPad;
