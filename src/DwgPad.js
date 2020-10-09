@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import * as d3 from "d3";
 import useMouse from "@react-hook/mouse-position";
+import {Delaunay} from "d3-delaunay";
 
 //https://www.npmjs.com/package/@react-hook/mouse-position
 //github.com/jaredLunde/react-hook/tree/master/packages/mouse-position#readme
@@ -262,7 +263,6 @@ const DwgPad = forwardRef((data, referencia) => {
       .attr("opacity", 0.2);
 
     const geomPers = svg.append("g").attr("fill", "none");
-    const geomPersCnavas = 
     //Geometria Persistida _ vertices:
     geomTransf.map((pol) =>
       pol.map((punto) =>
@@ -331,17 +331,28 @@ const DwgPad = forwardRef((data, referencia) => {
           }
         })
       );
-      geomTransf.map((pol) => {
-
-        const context = document;
-        localStorage.setItem('contexto', context);
-        localStorage.getItem('contexto');
-        // localStorage.clear();
-      });
     };
+    let basePuntos = geomTransf.map((pol) => pol.map(punto => [[punto[0], punto[1]]])).flat().flat();
+    const delaunay = Delaunay.from(Array.from(basePuntos, d => [d[0], d[1]]));
+    const range = (start, stop, step) => Array.from({length: (stop - start) / step + 1}, (_, i) => start + (i*step));
+    const baseTriangulos = range(0, delaunay.triangles.length - 1, 3).map(i => [
+      [basePuntos[delaunay.triangles[i]],     basePuntos[delaunay.triangles[i] + 1]], 
+      [basePuntos[delaunay.triangles[i + 1]], basePuntos[delaunay.triangles[i + 1] + 1]], 
+      [basePuntos[delaunay.triangles[i + 2]], basePuntos[delaunay.triangles[i + 2] + 1]]]); 
+    console.group("delaunay");
+    console.log("basePuntos", basePuntos);
+    console.log("delaunay.points", delaunay.points);
+    console.log("delaunay.triangles", delaunay.triangles);
+    console.log("range", range(0, delaunay.triangles.length - 1, 3));
+    console.log("baseTriangulos", baseTriangulos);
+    console.groupEnd();
     //EventTriggers_Delaunay:
-    // const context = canvas.node().getContext("2d");
-    // console.log("context", context);
+    const delaunayPrueba = Delaunay.from([[0,0], [100, 0], [50, 0], [100, 200], [0, 200], [0, 100]]);
+    console.group("Prueba");
+    console.log("puntosInicio", [[0, 0], [50, 0], [100, 0], [100, 200], [0, 200], [0, 100]]);
+    console.log("delaunay.points", delaunayPrueba.points);
+    console.log("triangles:", delaunayPrueba.triangles);
+    console.groupEnd();
     //EventTriggers_Puntos
     geomTransf.map((pol) =>
       pol.map((punto) =>
